@@ -6,5 +6,7 @@ window.SUNO_SAMPLES = {
   "synthpop": "40150971-01ac-4985-adce-0c2aaecf7d9c",
   "electropop": "f4a3dda3-fc96-4d46-84c8-77df2845e452",
   "indie-pop": "80da4b05-54ca-4084-adb2-8057d5d13857",
-  "acoustic-pop": "8f009b6b-b911-4611-bb82-d33daace9e49"
+  "acoustic-pop": "8f009b6b-b911-4611-bb82-d33daace9e49",
+  "alternative-rock": "37f52ef1-d1fa-4962-994f-527e3a514a95",
+  "indie-rock": "139aa3ea-7127-42f5-a57a-0236d1a13fc7"
 };
