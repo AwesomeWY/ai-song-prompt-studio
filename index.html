@@ -95,6 +95,9 @@ header.top{display:flex;align-items:center;justify-content:space-between;gap:12p
 .cw{display:inline-flex;align-items:stretch}
 .cw .chip{border-top-right-radius:0;border-bottom-right-radius:0}
 .cw.hide{display:none}
+#gWrap.collapsed .more{display:none}
+.more-toggle{display:flex;justify-content:center;margin-top:22px}
+.more-toggle .btn{font-size:16px;padding:12px 22px}
 .play{border:1px solid var(--line);border-left:none;background:#ffffff14;color:var(--accent);padding:0 12px;border-radius:0 999px 999px 0;font-size:13px;font-weight:800}
 .play:hover{background:var(--accent);color:#14152b}
 .play.on{background:var(--accent);color:#14152b}
@@ -284,6 +287,13 @@ const GENRES = {
   ]
 };
 
+/* 추천 장르 40개: 처음 화면에 보이는 장르 (샘플 제작 엑셀의 1순위와 같음) */
+const CORE_GENRES = new Set(["pop","dance pop","city pop","acoustic pop","power ballad","k-pop","korean ballad","trot, korean trot",
+  "modern trot, dance trot","70s korean folk","90s k-pop","k-drama ost ballad","korean traditional fusion","korean children's song",
+  "rock","indie rock","hip hop","lo-fi hip hop","r&b","funk","disco","edm","house","synthwave","jazz","bossa nova","blues",
+  "cinematic score","broadway musical","solo piano","folk","country","latin pop","reggae","french chanson","lo-fi","lullaby",
+  "ccm, worship","stadium anthem, chant","orchestral"]);
+
 const MOODS = {
   "밝은 감정":[["행복한","happy"],["신나는","upbeat"],["설레는","fluttering, excited"],["희망찬","hopeful"],["상쾌한","fresh"],["사랑스러운","lovely"],["유쾌한","playful"],["자신감 넘치는","confident"],["축제 같은","festive"],["승리의","triumphant"]],
   "잔잔한 감정":[["따뜻한","warm"],["편안한","relaxing"],["몽환적인","dreamy"],["평화로운","peaceful"],["포근한","cozy"],["잔잔한","calm"],["순수한","innocent"],["감성적인","sentimental"],["로맨틱한","romantic"],["여유로운","laid-back"]],
@@ -402,7 +412,7 @@ const KO = {};
    ========================================================= */
 const DEFAULT = () => ({
   mode:null, step:0,
-  compose:{genres:[],moods:[],bpm:100,useBpm:true,feels:[],instruments:[],vocalType:[],vocalTone:[],vocalStyle:[],lang:[],eras:[],production:[],structure:[],duration:"제한 없음",key:"",extra:"",exclude:"",title:""},
+  compose:{genres:[],moods:[],bpm:100,useBpm:true,feels:[],instruments:[],vocalType:[],vocalTone:[],vocalStyle:[],lang:[],eras:[],production:[],structure:[],duration:"제한 없음",showAll:false,key:"",extra:"",exclude:"",title:""},
   lyrics:{style:null,themes:[],customTheme:"",feelings:[],answers:{},text:"",genre:[],pov:POVS[0],tone:TONES[0],flow:FLOWS[0],rhyme:[RHYMES[0]],eng:ENG_MIX[0],length:"1분",tpl:"기본 팝",hook:"",must:"",avoid:"",final:"",title:"",convTab:"ai"}
 });
 let S = load();
@@ -458,6 +468,7 @@ function setPath(path,v){ const ks=path.split("."); const last=ks.pop(); ks.redu
 /* =========================================================
    작곡 프롬프트 생성
    ========================================================= */
+function isShown([k,e]){ return S.compose.showAll || CORE_GENRES.has(e) || S.compose.genres.includes(e); }
 function composePrompt(){
   const c=S.compose; const parts=[];
   parts.push(...c.genres);
@@ -663,11 +674,14 @@ function composeView(step){
   switch(step){
   case 0: return `
     <h2>🎼 어떤 장르의 음악을 만들까요?</h2>
-    <p class="desc">최대 3개까지 고를 수 있어요. 두세 장르를 섞으면 독특한 퓨전 음악이 됩니다. (예: 트로트 + EDM, 국악 퓨전 + 힙합)</p>
+    <p class="desc">수업에서 많이 쓰는 <b>추천 장르 ${CORE_GENRES.size}개</b>를 먼저 보여 드려요. 더 많은 장르는 아래 '전체 장르 보기'를 누르거나 검색하세요.<br>최대 3개까지 고를 수 있지만, <b>중심 장르 1개 + 섞을 장르 1개</b>일 때 AI가 가장 잘 반영해요. (예: 트로트 + EDM)</p>
     <input class="search" id="gSearch" placeholder="🔍 장르 검색 (예: 재즈, 시티팝, rock, 국악)">
     ${sampleCount(Object.values(GENRES).flat())?`<div class="sample-note">🎧 <b style="color:var(--accent)">▶</b> 표시가 있는 장르는 Suno로 만든 샘플을 들어볼 수 있어요 (${sampleCount(Object.values(GENRES).flat())}개)</div>`:""}
-    <div class="catnav">${Object.keys(GENRES).map((g,i)=>`<button data-jump="cat${i}">${g.split(" ")[0]}</button>`).join("")}<button data-act="randomGenre">🎲 랜덤 추천</button></div>
-    <div id="gList">${Object.entries(GENRES).map(([cat,list],i)=>`<div class="group" id="cat${i}"><h3>${cat} <span class="cnt">${list.length}개</span></h3><div class="chips" data-max="3">${list.map(x=>chip("compose.genres",x)).join("")}</div></div>`).join("")}</div>
+    <div id="gWrap" class="${c.showAll?"":"collapsed"}">
+    <div class="catnav">${Object.keys(GENRES).map((g,i)=>`<button data-jump="cat${i}" class="${GENRES[g].some(isShown)?"":"more"}">${g.split(" ")[0]}</button>`).join("")}<button data-act="randomGenre">🎲 랜덤 추천</button></div>
+    <div id="gList">${Object.entries(GENRES).map(([cat,list],i)=>`<div class="group ${list.some(isShown)?"":"more"}" id="cat${i}"><h3>${cat} <span class="cnt">${c.showAll?list.length+"개":`추천 ${list.filter(isShown).length}개 / 전체 ${list.length}개`}</span></h3><div class="chips" data-max="3">${list.map(x=>{ const h=chip("compose.genres",x); return isShown(x)?h:h.replace(/^<(span|button) class="/,'<$1 class="more '); }).join("")}</div></div>`).join("")}</div>
+    </div>
+    <div class="more-toggle"><button class="btn" data-act="toggleGenres">${c.showAll?`－ 추천 장르만 보기 (${CORE_GENRES.size}개)`:`＋ 전체 장르 보기 (${Object.values(GENRES).flat().length}개)`}</button></div>
     <div class="tip"><b>수업 팁</b> · 장르 이름은 영어로 프롬프트에 들어갑니다. 칩 옆의 작은 영어가 실제로 AI에게 전달되는 단어예요.</div>`;
   case 1: return `
     <h2>🎨 어떤 분위기의 곡인가요?</h2>
@@ -886,6 +900,7 @@ function afterRender(keep){
   const gs=$("#gSearch");
   if(gs) gs.addEventListener("input",()=>{
     const q=gs.value.trim().toLowerCase();
+    $("#gWrap").classList.toggle("collapsed", !q && !S.compose.showAll);
     document.querySelectorAll("#gList .group").forEach(g=>{
       let any=false;
       g.querySelectorAll(".chip").forEach(ch=>{ const hit=!q||ch.textContent.toLowerCase().includes(q); (ch.closest(".cw")||ch).classList.toggle("hide",!hit); any=any||hit; });
@@ -932,6 +947,7 @@ document.addEventListener("click",e=>{
   }
   switch(d.act){
     case "closePlayer": closePlayer(); break;
+    case "toggleGenres": S.compose.showAll=!S.compose.showAll; save(); render(true); if(!S.compose.showAll) document.getElementById("gList").scrollIntoView({behavior:"smooth"}); break;
     case "home": S.mode=null; save(); render(); break;
     case "prev": if(S.step>0){S.step--; save(); render();} break;
     case "next": S.step++; save(); render(); break;
@@ -939,7 +955,7 @@ document.addEventListener("click",e=>{
       if(confirm(`${S.mode==="compose"?"AI 작곡":"AI 작사"} 과정에서 입력한 내용을 모두 지울까요?`)){ const b=DEFAULT(); S[S.mode]=b[S.mode]; S.step=0; save(); render(); toast("초기화했어요"); }
       break;
     case "randomGenre": {
-      const all=Object.values(GENRES).flat(); const pick=()=>all[Math.floor(Math.random()*all.length)][1];
+      const all=Object.values(GENRES).flat().filter(x=>S.compose.showAll||CORE_GENRES.has(x[1])); const pick=()=>all[Math.floor(Math.random()*all.length)][1];
       S.compose.genres=[...new Set([pick(),pick()])]; save(); render(true);
       toast("🎲 "+S.compose.genres.map(g=>KO[g]).join(" + ")); break; }
     case "mergeAns": {
