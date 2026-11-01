@@ -347,7 +347,15 @@ const TONES = ["반말 구어체 (친근하게)","존댓말 (공손하고 따뜻
 const FLOWS = ["잔잔하게 시작해 후렴에서 폭발","슬픔에서 희망으로","과거 회상 → 현재 → 미래 다짐","처음부터 끝까지 신나게","담담하게 유지하다 마지막에 뭉클하게","유머러스하게 풀다 진심으로 마무리"];
 const RHYMES = ["후렴 반복 훅을 강하게","줄 끝 각운 맞추기","줄 앞 두운 맞추기","말맛 나는 의성어·의태어","운율 자유롭게 (자연스러움 우선)"];
 const ENG_MIX = ["영어 없이 순수 한국어","후렴에만 짧은 영어 한 구절","영어를 자연스럽게 섞기 (K-POP 스타일)","전체 영어 가사"];
-const LENGTHS = ["짧게 (1~2분)","보통 (3분 내외)","길게 (4분 이상)"];
+/* 곡 길이: 줄 수 기준 (보통 빠르기에서 가사 한 줄 ≈ 4~5초, 짧은 전주·후주 포함) */
+const DURATIONS = {
+  "30초":{e:"⏱️",desc:"광고 징글·쇼츠·인트로용",sections:[["Verse",2],["Chorus",4]],max:6,chars:"8~12자",style:"short jingle, about 30 seconds, very short intro",focus:"상황 설명은 빼고, 첫 줄부터 핵심 메시지와 후크가 바로 나오게"},
+  "1분":{e:"⏰",desc:"숏폼·축하 영상·수업 발표용",sections:[["Verse",4],["Chorus",4],["Outro",2]],max:10,chars:"8~14자",style:"short song, about 1 minute, short intro",focus:"가장 중요한 장면 1~2개만 골라 압축하고, 후렴에 감정을 모으게"},
+  "2분":{e:"🕑",desc:"짧은 완곡 · 1절+2절",sections:[["Verse 1",4],["Chorus",4],["Verse 2",4],["Chorus",4],["Outro",2]],max:18,chars:"8~14자",style:"short song, about 2 minutes",focus:"1절은 장면, 2절은 감정 심화, 후렴은 두 번 똑같이 반복되게"},
+  "3분 이상 (정규곡)":{e:"🎼",desc:"구조 템플릿을 직접 선택",sections:null,max:null,chars:"8~14자",style:"",focus:""}
+};
+const DUR_KEYS = Object.keys(DURATIONS);
+const SHORT_DURS = ["30초","1분","2분"];
 const STRUCT_TPL = {
   "기본 팝":["Intro","Verse 1","Pre-Chorus","Chorus","Verse 2","Pre-Chorus","Chorus","Bridge","Chorus","Outro"],
   "발라드":["Intro","Verse 1","Verse 2","Chorus","Verse 3","Chorus","Bridge","Final Chorus","Outro"],
@@ -373,12 +381,12 @@ const KO = {};
    ========================================================= */
 const DEFAULT = () => ({
   mode:null, step:0,
-  compose:{genres:[],moods:[],bpm:100,useBpm:true,feels:[],instruments:[],vocalType:[],vocalTone:[],vocalStyle:[],lang:[],eras:[],production:[],structure:[],key:"",extra:"",exclude:"",title:""},
-  lyrics:{style:null,themes:[],customTheme:"",feelings:[],answers:{},text:"",genre:[],pov:POVS[0],tone:TONES[0],flow:FLOWS[0],rhyme:[RHYMES[0]],eng:ENG_MIX[0],length:LENGTHS[1],tpl:"기본 팝",hook:"",must:"",avoid:"",final:"",title:"",convTab:"ai"}
+  compose:{genres:[],moods:[],bpm:100,useBpm:true,feels:[],instruments:[],vocalType:[],vocalTone:[],vocalStyle:[],lang:[],eras:[],production:[],structure:[],duration:"제한 없음",key:"",extra:"",exclude:"",title:""},
+  lyrics:{style:null,themes:[],customTheme:"",feelings:[],answers:{},text:"",genre:[],pov:POVS[0],tone:TONES[0],flow:FLOWS[0],rhyme:[RHYMES[0]],eng:ENG_MIX[0],length:"1분",tpl:"기본 팝",hook:"",must:"",avoid:"",final:"",title:"",convTab:"ai"}
 });
 let S = load();
 function load(){
-  try{ const d = JSON.parse(localStorage.getItem("mslab-song-studio")); if(d){ const b=DEFAULT(); return {...b,...d,compose:{...b.compose,...d.compose},lyrics:{...b.lyrics,...d.lyrics}}; } }catch(e){}
+  try{ const d = JSON.parse(localStorage.getItem("mslab-song-studio")); if(d){ const b=DEFAULT(); const r={...b,...d,compose:{...b.compose,...d.compose},lyrics:{...b.lyrics,...d.lyrics}}; if(!DURATIONS[r.lyrics.length]) r.lyrics.length="1분"; return r; } }catch(e){}
   return DEFAULT();
 }
 function save(){ localStorage.setItem("mslab-song-studio",JSON.stringify(S)); }
@@ -424,6 +432,7 @@ function composePrompt(){
   if(c.vocalType.includes("instrumental")) parts.push("instrumental");
   else parts.push(...c.vocalType,...c.vocalTone,...c.vocalStyle,...c.lang);
   parts.push(...c.production,...c.structure);
+  if(DURATIONS[c.duration]) parts.push(DURATIONS[c.duration].style);
   if(c.extra.trim()) parts.push(c.extra.trim());
   return [...new Set(parts)].join(", ");
 }
@@ -434,13 +443,15 @@ function composeExplain(){
   if(c.useBpm) out.push(["템포",c.bpm+" BPM ("+bpmName(c.bpm)+")"]);
   f("리듬",c.feels); if(c.key) out.push(["조성",KO[c.key]||c.key]);
   f("악기",c.instruments); if(c.vocalType.includes("instrumental")) f("보컬",["instrumental"]); else { f("보컬",[...c.vocalType,...c.vocalTone,...c.vocalStyle]); f("언어",c.lang); }
-  f("사운드",c.production); f("구조",c.structure); if(c.extra.trim()) out.push(["추가",c.extra.trim()]);
+  f("사운드",c.production); f("구조",c.structure); if(DURATIONS[c.duration]) out.push(["길이",c.duration+" ("+DURATIONS[c.duration].max+"줄 이내 가사)"]); if(c.extra.trim()) out.push(["추가",c.extra.trim()]);
   return out;
 }
 function bpmName(b){ return b<70?"아주 느림":b<90?"느림":b<110?"보통":b<125?"경쾌":b<140?"빠름":"아주 빠름"; }
 function composeTagsSkeleton(){
   const c=S.compose; const inst=c.vocalType.includes("instrumental");
-  if(inst) return "[Intro]\n[Instrumental]\n[Build]\n[Drop]\n[Instrumental Break]\n[Outro]\n[End]";
+  const dur=DURATIONS[c.duration];
+  if(inst) return dur?"[Short Intro]\n[Main Theme]\n[End]":"[Intro]\n[Instrumental]\n[Build]\n[Drop]\n[Instrumental Break]\n[Outro]\n[End]";
+  if(dur) return [...dur.sections.map(([n,k])=>`[${n}]\n(가사 ${k}줄)`),"[End]"].join("\n");
   let t=["[Intro]","[Verse 1]","(가사)","[Pre-Chorus]","(가사)","[Chorus]","(가사)","[Verse 2]","(가사)","[Chorus]","(가사)"];
   if(c.structure.includes("guitar solo")) t.push("[Guitar Solo]");
   if(c.structure.includes("dance break")) t.push("[Dance Break]");
@@ -466,7 +477,20 @@ function lyricPrompt(){
   const L=S.lyrics, st=lyricStyle(); const {qa,free}=rawWriting();
   const themes=[...L.themes, ...(L.customTheme.trim()?[L.customTheme.trim()]:[])];
   const genre=L.genre.map(g=>KO[g]||g).join(", ")||"자유";
+  const D=DURATIONS[L.length]||DURATIONS["1분"], short=!!D.sections;
   const tpl=STRUCT_TPL[L.tpl].map(x=>`[${x}]`).join(" → ");
+  const lenBlock = short ? `■ 길이 제한 (가장 중요 — 반드시 지켜 주세요)
+- 이 노래는 약 ${L.length} 분량입니다.
+- 가사는 태그를 빼고 전체 ${D.max}줄을 넘으면 안 됩니다.
+- 아래 구조와 줄 수를 정확히 지켜 주세요. 이 밖의 섹션(2절, 프리코러스, 브릿지 등)은 추가하지 마세요.
+${D.sections.map(([n,k])=>`  [${n}] ${k}줄`).join("\n")}
+  [End]
+- 한 줄은 ${D.chars}로 짧게 써 주세요.
+- 제 글의 내용이 많더라도 ${D.focus} 써 주세요.
+- 가사 맨 끝에 [End] 태그를 붙여 곡이 끝나도록 해 주세요.
+- 출력하기 전에 줄 수를 직접 세어 확인해 주세요.
+
+` : "";
   return `당신은 한국 대중음악 전문 작사가입니다. 아래는 제가 직접 쓴 "${st?st.name:"자유"}" 형식의 글입니다.
 이 글에 담긴 저의 실제 경험과 감정을 살려서, 노래로 부를 수 있는 가사로 바꿔 주세요.
 
@@ -482,20 +506,39 @@ ${[qa, free?"[자유롭게 쓴 글]\n"+free:""].filter(Boolean).join("\n\n")||"(
 - 감정 흐름: ${L.flow}
 - 운율·리듬: ${L.rhyme.join(", ")||"자연스럽게"}
 - 영어 사용: ${L.eng}
-- 곡 길이: ${L.length}
-- 곡 구조: ${tpl}
+- 곡 길이: ${L.length}${short?` (가사 ${D.max}줄 이내)`:""}
+- 곡 구조: ${short?D.sections.map(([n,k])=>`[${n}] ${k}줄`).join(" → ")+" → [End]":tpl}
 ${L.hook.trim()?`- 후렴(훅)에 꼭 들어갈 핵심 문장: "${L.hook.trim()}"\n`:""}${L.must.trim()?`- 꼭 넣고 싶은 단어·표현: ${L.must.trim()}\n`:""}${L.avoid.trim()?`- 피하고 싶은 표현: ${L.avoid.trim()}\n`:""}
-■ 작성 규칙
+${lenBlock}■ 작성 규칙
 1. 제 글 속의 구체적인 장면, 사물, 대사, 장소를 최대한 살려 주세요. 뻔하고 추상적인 표현(예: 영원히, 운명, 기적)은 줄여 주세요.
-2. 한 줄은 노래로 부르기 좋게 짧게(한국어 기준 대략 8~14자) 써 주세요.
+2. 한 줄은 노래로 부르기 좋게 짧게(한국어 기준 대략 ${D.chars}) 써 주세요.
 3. 후렴(Chorus)은 기억하기 쉬운 반복 구절로 만들고, 곡 전체의 중심 메시지를 담아 주세요.
 4. 각 섹션 앞에 Suno 등 AI 작곡 도구가 인식할 수 있도록 영어 대괄호 태그([Verse 1], [Chorus] 등)를 붙여 주세요.
-5. 1절은 상황 소개, 2절은 감정 심화, 브릿지는 전환·깨달음이 드러나도록 구성해 주세요.
+5. ${short?"짧은 곡이므로 긴 설명보다 감정과 반복되는 후크에 집중해 주세요.":"1절은 상황 소개, 2절은 감정 심화, 브릿지는 전환·깨달음이 드러나도록 구성해 주세요."}
 
 ■ 출력 형식
 1) 노래 제목 후보 3개
 2) 완성된 가사 (태그 포함)
-3) 어떤 부분을 제 글에서 가져왔는지 짧은 설명 (3줄 이내)`;
+3) ${short?`가사 아래에 "총 ○줄 / 목표 ${D.max}줄 이내" 확인 한 줄`:"어떤 부분을 제 글에서 가져왔는지 짧은 설명 (3줄 이내)"}`;
+}
+function lyricLineCount(t){ return t.split("\n").map(x=>x.trim()).filter(x=>x && !/^\[.*\]$/.test(x)).length; }
+function shortenPrompt(){
+  const L=S.lyrics, D=DURATIONS[L.length]||DURATIONS["1분"];
+  const struct = D.sections ? D.sections.map(([n,k])=>`[${n}] ${k}줄`).join("\n")+"\n[End]" : STRUCT_TPL[L.tpl].map(x=>`[${x}]`).join("\n");
+  return `아래 가사를 약 ${L.length.replace(" (정규곡)","")} 길이의 노래에 맞게 줄여 주세요.
+
+■ 지켜야 할 것
+- 가사는 태그를 빼고 전체 ${D.max?D.max+"줄 이내":"40줄 이내"}로 줄여 주세요.
+- 구조는 정확히 아래와 같이 맞춰 주세요. 다른 섹션은 넣지 마세요.
+${struct}
+- 한 줄은 ${D.chars}로 짧게.
+- 원래 가사에서 가장 좋은 표현과 후렴 핵심 문장은 살리고, 설명적인 줄부터 지워 주세요.
+- 새로운 내용을 지어내지 말고 원래 가사 안에서 고르고 다듬어 주세요.
+- Suno가 인식하도록 영어 대괄호 태그를 유지하고, 끝에 [End]를 붙여 주세요.
+- 마지막에 "총 ○줄"이라고 줄 수를 적어 주세요.
+
+■ 원래 가사
+${L.final.trim()||"(여기에 줄이고 싶은 가사를 붙여넣으세요)"}`;
 }
 function autoSkeleton(){
   const L=S.lyrics; const {free}=rawWriting();
@@ -509,6 +552,14 @@ function autoSkeleton(){
   const v1=sents.slice(0,a), v2=sents.slice(a,a*2), br=sents.slice(a*2);
   const f0=L.feelings[0], t0=L.themes[0]?L.themes[0].split(/[·(]/)[0].trim():"";
   const chorus=[hook, (f0?f0+josa(f0,"이","가")+" 밀려와":"오늘도 나는 노래해"), hook, (t0?t0+", 그 이름을 불러":"이 마음을 불러")];
+  const D=DURATIONS[L.length];
+  if(D&&D.sections){
+    let k=0; const take=c=>{ const r=sents.slice(k,k+c); k+=c; while(r.length<c) r.push("(한 줄 더 써 보세요)"); return r; };
+    return [...D.sections.map(([n,c])=>{
+      const lines=n.startsWith("Chorus")?chorus.slice(0,c):n==="Outro"?[hook,chorus[1]].slice(0,c):take(c);
+      return `[${n}]\n${lines.join("\n")}`;
+    }),"[End]"].join("\n\n");
+  }
   const blk=(t,arr)=>`[${t}]\n${(arr.length?arr:["(여기에 장면을 더 써 보세요)"]).slice(0,6).join("\n")}`;
   return [blk("Verse 1",v1),blk("Chorus",chorus),blk("Verse 2",v2),blk("Chorus",chorus),blk("Bridge",br),blk("Final Chorus",chorus),"[Outro]\n"+hook].join("\n\n");
 }
@@ -614,6 +665,8 @@ function composeView(step){
   case 6: return `
     <h2>🧩 곡 구조와 추가 요청</h2>
     <p class="desc">곡의 전개 방식과 원하는 특징을 고르고, 더 하고 싶은 말을 직접 적어도 됩니다.</p>
+    <div class="group"><h3>⏱️ 곡 길이</h3>${radioChips("compose.duration",["제한 없음",...SHORT_DURS])}
+      ${DURATIONS[c.duration]?`<div class="tip"><b>${esc(c.duration)} 곡 만들기</b> · Suno는 시간을 정확히 지키지 않아요. 가장 확실한 방법은 <b>가사를 ${DURATIONS[c.duration].max}줄 이내로 줄이고 마지막에 [End] 태그</b>를 넣는 것이에요. 길게 나오면 다시 생성하거나 앞부분만 잘라 쓰세요.</div>`:""}</div>
     ${chipGroup("곡 전개","compose.structure",STRUCTURE,4)}
     <div class="row">
       <div><label class="lb">곡 제목 <small>(선택)</small></label><input class="field" data-model="compose.title" value="${esc(c.title)}" placeholder="예: 엄마의 봄날"></div>
@@ -637,6 +690,7 @@ function composeResult(){
       <pre id="outPrompt">${esc(p)||"(선택한 항목이 없어요)"}</pre>
       <div class="links"><button class="btn sm primary" data-copy="prompt">📋 스타일 복사</button></div>
     </div>
+    ${hasLyrics&&DURATIONS[c.duration]&&lyricLineCount(L.final)>DURATIONS[c.duration].max?`<div class="tip" style="border-color:var(--warn)">⚠️ ${esc(c.duration)} 곡인데 가사가 ${lyricLineCount(L.final)}줄이에요(목표 ${DURATIONS[c.duration].max}줄 이내). 가사가 길면 곡도 길어집니다. <button class="btn sm" data-mode="lyrics" data-step="4">AI 작사에서 줄이기</button></div>`:""}
     <div class="group"><h3>🔎 프롬프트 한국어 풀이</h3><div class="ko-explain">${ex.map(([k,v])=>`<span><b>${k}</b>${esc(v)}</span>`).join("")||"<span>선택 항목 없음</span>"}</div></div>
     ${c.exclude.trim()?`<div class="out" style="margin-top:14px"><h4>🚫 Exclude Styles (제외할 요소)</h4><pre>${esc(c.exclude)}</pre><div class="links"><button class="btn sm" data-copy="exclude">📋 복사</button></div></div>`:""}
     <div class="two" style="margin-top:16px">
@@ -703,9 +757,13 @@ function lyricView(step){
     <div class="group"><h3>감정 흐름</h3>${radioChips("lyrics.flow",FLOWS)}</div>
     <div class="group"><h3>운율·리듬 <span class="cnt">최대 2개</span></h3><div class="chips" data-max="2">${RHYMES.map(r=>chip("lyrics.rhyme",[r,""],false)).join("")}</div></div>
     <div class="group"><h3>영어 사용</h3>${radioChips("lyrics.eng",ENG_MIX)}</div>
-    <div class="group"><h3>곡 길이</h3>${radioChips("lyrics.length",LENGTHS)}</div>
-    <div class="group"><h3>곡 구조 템플릿</h3>${radioChips("lyrics.tpl",Object.keys(STRUCT_TPL))}
-      <p style="color:var(--muted);font-size:14px;margin-top:8px">${STRUCT_TPL[L.tpl].join(" → ")}</p></div>
+    <div class="group"><h3>⏱️ 곡 길이 <span class="cnt">길이에 맞춰 가사 줄 수가 정해져요</span></h3>
+      <div class="grid-cards">${DUR_KEYS.map(k=>{const D=DURATIONS[k];return `<button class="card-opt ${L.length===k?"sel":""}" data-dur="${esc(k)}"><div class="e">${D.e}</div><h4>${esc(k)}</h4><p>${D.desc}<br><b style="color:var(--text)">${D.max?`가사 ${D.max}줄 이내`:"구조에 따라 20~40줄"}</b></p></button>`}).join("")}</div></div>
+    ${DURATIONS[L.length].sections
+      ? `<div class="group"><h3>곡 구조 <span class="cnt">${esc(L.length)} 길이에 맞춘 고정 구조</span></h3><div class="summary-tags">${DURATIONS[L.length].sections.map(([n,k])=>`<span>[${n}] ${k}줄</span>`).join("")}<span>[End]</span></div>
+         <p style="color:var(--muted);font-size:14px;margin-top:8px">구조를 직접 고르려면 곡 길이를 '3분 이상 (정규곡)'으로 바꾸세요.</p></div>`
+      : `<div class="group"><h3>곡 구조 템플릿</h3>${radioChips("lyrics.tpl",Object.keys(STRUCT_TPL))}
+         <p style="color:var(--muted);font-size:14px;margin-top:8px">${STRUCT_TPL[L.tpl].join(" → ")}</p></div>`}
     <label class="lb">🎯 후렴에 꼭 넣을 핵심 문장 <small>노래 전체를 대표하는 한 줄</small></label>
     <input class="field" data-model="lyrics.hook" value="${esc(L.hook)}" placeholder="예: 밥은 먹었니, 그 한마디에">
     <div class="row">
@@ -731,14 +789,15 @@ function lyricView(step){
         <textarea class="field" id="finalLyrics" data-model="lyrics.final" style="min-height:420px;font-size:16px" placeholder="[Verse 1]\n여기에 가사를 붙여넣으세요...">${esc(L.final)}</textarea>
       </div>
       <div>
-        <label class="lb" style="margin-top:0">📏 줄별 글자 수 <small>14자 넘으면 노란색</small></label>
+        <div id="lenStatus">${lenStatusHTML()}</div>
+        <label class="lb">📏 줄별 글자 수 <small>14자 넘으면 노란색</small></label>
         <div class="linecount" id="lineCount">${lineCountHTML(L.final)}</div>
         <ul class="checklist">
           <li>소리 내어 불러 보며 어색한 줄 고치기</li>
           <li>후렴이 2번 이상 반복되나요?</li>
           <li>내 글의 구체적 장면이 살아 있나요?</li>
           <li>뻔한 표현을 나만의 단어로 바꿨나요?</li>
-          <li>1절과 2절의 줄 수가 비슷한가요?</li>
+          <li>목표 줄 수(${DURATIONS[L.length].max||"20~40"}줄) 안에 들어오나요?</li>
         </ul>
       </div>
     </div>`; }
@@ -749,7 +808,8 @@ function lyricView(step){
     <p class="desc">제목을 정하고 가사를 저장하세요. 이제 <b>AI 작곡</b>에서 이 가사에 어울리는 곡 스타일을 고를 차례예요.</p>
     <label class="lb">노래 제목</label>
     <input class="field" data-model="lyrics.title" value="${esc(L.title)}" placeholder="예: 밥은 먹었니">
-    <div class="summary-tags" style="margin-top:14px">${[lyricStyle()?.name,...L.themes,...L.feelings.slice(0,4),...L.genre.map(g=>KO[g]||g),L.tone].filter(Boolean).map(t=>`<span>${esc(t)}</span>`).join("")}</div>
+    ${has&&DURATIONS[L.length].max&&lyricLineCount(L.final)>DURATIONS[L.length].max?`<div class="tip" style="border-color:var(--warn)">⚠️ ${esc(L.length)}용 가사는 ${DURATIONS[L.length].max}줄 이내인데 지금 ${lyricLineCount(L.final)}줄이에요. <button class="btn sm" data-copy="shorten">✂️ 길이 맞추기 프롬프트 복사</button> <button class="btn sm" data-goto="4">편집칸으로</button></div>`:""}
+    <div class="summary-tags" style="margin-top:14px">${[lyricStyle()?.name,L.length,...L.themes,...L.feelings.slice(0,4),...L.genre.map(g=>KO[g]||g),L.tone].filter(Boolean).map(t=>`<span>${esc(t)}</span>`).join("")}</div>
     <div class="out" style="margin-top:16px"><h4>📝 ${esc(L.title||"제목 미정")} <button class="btn sm primary" data-copy="lyricsFinal">📋 가사 복사</button></h4>
       <pre>${has?esc(L.final):"(5단계 편집칸에 가사가 없어요. 이전 단계로 돌아가 가사를 붙여넣어 주세요.)"}</pre></div>
     <div class="links">
@@ -760,6 +820,13 @@ function lyricView(step){
     </div>
     <div class="tip"><b>다음 단계</b> · 'AI 작곡으로 가기'를 누르면 고른 노래 장르가 작곡 장르에 미리 채워지고, 작곡 완성 화면에 이 가사가 함께 나와 Suno에 한 번에 옮길 수 있어요.</div>`; }
   }
+}
+function lenStatusHTML(){
+  const L=S.lyrics, D=DURATIONS[L.length]||DURATIONS["1분"], n=lyricLineCount(L.final), max=D.max||40, over=n>max;
+  return `<div class="out" style="padding:14px;border-color:${over?"var(--warn)":"var(--line)"}">
+    <h4 style="margin-bottom:6px">⏱️ ${esc(L.length)} 목표 <span class="count ${over?"over":""}" style="font-size:15px;font-weight:800">현재 ${n}줄 / ${D.max?D.max+"줄 이내":"40줄 이내"}</span></h4>
+    <p style="font-size:14px;color:${over?"var(--warn)":"var(--sub)"}">${!n?"가사를 넣으면 줄 수를 세어 드려요 (태그 줄은 빼고 셉니다)":over?`⚠️ ${n-max}줄이 많아요! 아래 프롬프트로 길이를 맞추세요.`:"✅ 길이가 알맞아요"}</p>
+    <div class="links" style="margin-top:8px"><button class="btn sm ${over?"primary":""}" data-copy="shorten">✂️ 길이 맞추기 프롬프트 복사</button><button class="btn sm" data-goto="3">길이 바꾸기</button></div></div>`;
 }
 function writingLen(){ const {qa,free}=rawWriting(); return (qa.replace(/^- .*$/gm,"")+free).replace(/[\s→]/g,"").length; }
 function lineCountHTML(t){
@@ -797,13 +864,14 @@ document.addEventListener("click",e=>{
   if(e.target.closest("#homeBtn")){ S.mode=null; save(); render(); return; }
   const t=e.target.closest("button,a"); if(!t) return;
   const d=t.dataset;
-  if(d.mode){ e.preventDefault(); S.mode=d.mode; S.step=0; save(); render(); return; }
+  if(d.mode){ e.preventDefault(); S.mode=d.mode; S.step=+(d.step||0); save(); render(); return; }
   if(d.goto!==undefined){ S.step=+d.goto; save(); render(); return; }
   if(d.jump){ document.getElementById(d.jump).scrollIntoView({behavior:"smooth",block:"start"}); return; }
   if(d.style){ S.lyrics.style=d.style; save(); render(true); return; }
+  if(d.dur){ S.lyrics.length=d.dur; save(); render(true); return; }
   if(d.tab){ S.lyrics.convTab=d.tab; save(); render(true); return; }
   if(d.bpm){ S.compose.bpm=+d.bpm; S.compose.useBpm=true; save(); updBpm(); const ub=$("#useBpm"); if(ub) ub.checked=true; return; }
-  if(d.radio){ setPath(d.radio,d.val); const box=t.parentElement; box.querySelectorAll(".chip").forEach(c=>c.classList.toggle("sel",c===t)); if(d.radio==="lyrics.tpl") render(true); updLive(); return; }
+  if(d.radio){ setPath(d.radio,d.val); const box=t.parentElement; box.querySelectorAll(".chip").forEach(c=>c.classList.toggle("sel",c===t)); if(d.radio==="lyrics.tpl"||d.radio==="compose.duration") render(true); updLive(); return; }
   if(d.path){
     const arr=getPath(d.path); const i=arr.indexOf(d.val); const max=+(t.closest(".chips")?.dataset.max||0);
     if(i>=0){ arr.splice(i,1); t.classList.remove("sel"); }
@@ -818,7 +886,7 @@ document.addEventListener("click",e=>{
   if(d.tag){ insertAtCursor($("#finalLyrics"), (t.dataset.tag)+"\n"); return; }
   if(d.copy){
     const L=S.lyrics,c=S.compose;
-    const map={prompt:composePrompt(),exclude:c.exclude,skeleton:composeTagsSkeleton(),lyricsFinal:L.final,lyricPrompt:lyricPrompt(),
+    const map={shorten:shortenPrompt(),prompt:composePrompt(),exclude:c.exclude,skeleton:composeTagsSkeleton(),lyricsFinal:L.final,lyricPrompt:lyricPrompt(),
       all:`[제목]\n${c.title||L.title||""}\n\n[Styles]\n${composePrompt()}\n${c.exclude?`\n[Exclude Styles]\n${c.exclude}\n`:""}\n[Lyrics]\n${L.final.trim()||composeTagsSkeleton()}\n\nBy Mindstream LAB Awesome JWY`};
     copy(map[d.copy]||""); return;
   }
@@ -843,6 +911,7 @@ document.addEventListener("click",e=>{
     case "toCompose":
       if(S.lyrics.genre.length && !S.compose.genres.length) S.compose.genres=S.lyrics.genre.slice(0,3);
       if(S.lyrics.title && !S.compose.title) S.compose.title=S.lyrics.title;
+      S.compose.duration=SHORT_DURS.includes(S.lyrics.length)?S.lyrics.length:"제한 없음";
       if(!S.compose.lang.length) S.compose.lang=[S.lyrics.eng.startsWith("전체 영어")?"english lyrics":S.lyrics.eng.startsWith("영어 없이")?"korean lyrics":"korean and english lyrics"];
       S.mode="compose"; S.step=0; save(); render(); toast("가사 정보를 가지고 작곡으로 이동했어요"); break;
     case "dlLyrics": download(`${S.lyrics.title||"나의 가사"}.txt`, `${S.lyrics.title||"제목 미정"}\n\n${S.lyrics.final}\n\n---\n[원문]\n${[rawWriting().qa,rawWriting().free].filter(Boolean).join("\n\n")}\n\nBy Mindstream LAB Awesome JWY`); break;
@@ -854,7 +923,7 @@ document.addEventListener("click",e=>{
 document.addEventListener("input",e=>{
   const t=e.target;
   if(t.dataset.model){ setPath(t.dataset.model,t.value);
-    if(t.id==="finalLyrics"){ const lc=$("#lineCount"); if(lc) lc.innerHTML=lineCountHTML(t.value); }
+    if(t.id==="finalLyrics"){ const lc=$("#lineCount"); if(lc) lc.innerHTML=lineCountHTML(t.value); const ls=$("#lenStatus"); if(ls) ls.innerHTML=lenStatusHTML(); }
     if(t.dataset.model.startsWith("compose")) updLive();
   }
   if(t.dataset.ans!==undefined){ S.lyrics.answers[t.dataset.ans]=t.value; save(); }
