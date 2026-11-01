@@ -92,6 +92,21 @@ header.top{display:flex;align-items:center;justify-content:space-between;gap:12p
 .chip.sel{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#14152b;border-color:transparent;font-weight:700}
 .chip.sel small{color:#14152bb0}
 .chip.hide{display:none}
+.cw{display:inline-flex;align-items:stretch}
+.cw .chip{border-top-right-radius:0;border-bottom-right-radius:0}
+.cw.hide{display:none}
+.play{border:1px solid var(--line);border-left:none;background:#ffffff14;color:var(--accent);padding:0 12px;border-radius:0 999px 999px 0;font-size:13px;font-weight:800}
+.play:hover{background:var(--accent);color:#14152b}
+.play.on{background:var(--accent);color:#14152b}
+.player{position:fixed;right:18px;bottom:18px;width:min(560px,calc(100vw - 36px));background:#0b0c1ef7;border:1px solid var(--line);border-radius:18px;box-shadow:0 20px 60px #000a;z-index:50;overflow:hidden}
+.player .ph{display:flex;align-items:center;gap:10px;padding:10px 14px;font-weight:800}
+.player .ph span{flex:1}
+.player .ph a{color:var(--sub);font-size:13px;font-weight:600;text-decoration:none}
+.player .ph button{border:none;background:#ffffff14;color:var(--text);width:30px;height:30px;border-radius:8px}
+.player iframe{display:block;width:100%;height:210px;border:0}
+.player .pf{padding:8px 14px 12px;font-size:13px;color:var(--muted)}
+.sample-note{display:inline-flex;align-items:center;gap:6px;font-size:14px;color:var(--sub);background:#ffffff0c;border-radius:10px;padding:6px 12px;margin-top:10px}
+@media print{.player,.play{display:none!important}}
 
 .search{width:100%;padding:14px 18px;border-radius:14px;border:1px solid var(--line);background:var(--card);color:var(--text);font-size:17px}
 .search:focus,.field:focus{outline:2px solid var(--accent);border-color:transparent}
@@ -186,6 +201,12 @@ body.mode-compose{--accent:var(--comp);--accent2:var(--comp2)}
   <footer class="credit">By <b>Mindstream LAB Awesome JWY</b></footer>
 </div>
 <div class="toast" id="toast"></div>
+<div class="player" id="player" hidden>
+  <div class="ph"><span id="playerTitle">샘플 듣기</span><a id="playerLink" href="#" target="_blank" rel="noopener">Suno에서 열기 ↗</a><button data-act="closePlayer" aria-label="닫기">✕</button></div>
+  <iframe id="playerFrame" title="Suno 샘플 재생기" allow="autoplay; encrypted-media"></iframe>
+  <div class="pf">▶ 버튼을 눌러 재생하세요 · 장르 느낌을 알 수 있게 앞부분 30초 정도만 들어 보세요</div>
+</div>
+<script src="samples.js"></script>
 
 <script>
 /* =========================================================
@@ -404,9 +425,26 @@ function copy(text){
 }
 function download(name,text){ name=name.replace(/[\\/:*?"<>|]/g,"_"); const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([text],{type:"text/plain;charset=utf-8"})); a.download=name; a.click(); }
 function getPath(p){ return p.split(".").reduce((o,k)=>o[k],S); }
+const SAMPLES = window.SUNO_SAMPLES || {};
+function sampleId(en){ return String(en).toLowerCase().replace(/&/g,"and").replace(/'/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,""); }
+function sampleOf(en){ return en ? SAMPLES[sampleId(en)] : null; }
+function sampleCount(list){ return list.filter(([k,e])=>sampleOf(e)).length; }
+function openPlayer(en){
+  const id=sampleOf(en); if(!id) return;
+  $("#playerTitle").textContent="🎧 "+(KO[en]||en)+" 샘플";
+  $("#playerLink").href="https://suno.com/song/"+id;
+  const f=$("#playerFrame"); const src="https://suno.com/embed/"+id;
+  if(f.src!==src) f.src=src;
+  $("#player").hidden=false;
+  document.querySelectorAll(".play").forEach(b=>b.classList.toggle("on",b.dataset.play===en));
+}
+function closePlayer(){ $("#player").hidden=true; $("#playerFrame").src="about:blank"; document.querySelectorAll(".play.on").forEach(b=>b.classList.remove("on")); }
 function chip(path,[ko,en],sub=true,v){
   const arr=getPath(path); const val=v||en||ko; const on=arr.includes(val);
-  return `<button class="chip ${on?"sel":""}" data-path="${path}" data-val="${esc(val)}">${esc(ko)}${sub&&en?` <small>${esc(en)}</small>`:""}</button>`;
+  const b=`<button class="chip ${on?"sel":""}" data-path="${path}" data-val="${esc(val)}">${esc(ko)}${sub&&en?` <small>${esc(en)}</small>`:""}</button>`;
+  if((path==="compose.genres"||path==="lyrics.genre") && sampleOf(en))
+    return `<span class="cw">${b}<button class="play" data-play="${esc(en)}" title="${esc(ko)} 샘플 듣기" aria-label="${esc(ko)} 샘플 듣기">▶</button></span>`;
+  return b;
 }
 function chipGroup(title,path,list,max,sub=true){
   return `<div class="group"><h3>${title}${max?` <span class="cnt">최대 ${max}개</span>`:""}</h3><div class="chips" data-max="${max||0}">${list.map(x=>chip(path,x,sub)).join("")}</div></div>`;
@@ -627,6 +665,7 @@ function composeView(step){
     <h2>🎼 어떤 장르의 음악을 만들까요?</h2>
     <p class="desc">최대 3개까지 고를 수 있어요. 두세 장르를 섞으면 독특한 퓨전 음악이 됩니다. (예: 트로트 + EDM, 국악 퓨전 + 힙합)</p>
     <input class="search" id="gSearch" placeholder="🔍 장르 검색 (예: 재즈, 시티팝, rock, 국악)">
+    ${sampleCount(Object.values(GENRES).flat())?`<div class="sample-note">🎧 <b style="color:var(--accent)">▶</b> 표시가 있는 장르는 Suno로 만든 샘플을 들어볼 수 있어요 (${sampleCount(Object.values(GENRES).flat())}개)</div>`:""}
     <div class="catnav">${Object.keys(GENRES).map((g,i)=>`<button data-jump="cat${i}">${g.split(" ")[0]}</button>`).join("")}<button data-act="randomGenre">🎲 랜덤 추천</button></div>
     <div id="gList">${Object.entries(GENRES).map(([cat,list],i)=>`<div class="group" id="cat${i}"><h3>${cat} <span class="cnt">${list.length}개</span></h3><div class="chips" data-max="3">${list.map(x=>chip("compose.genres",x)).join("")}</div></div>`).join("")}</div>
     <div class="tip"><b>수업 팁</b> · 장르 이름은 영어로 프롬프트에 들어갑니다. 칩 옆의 작은 영어가 실제로 AI에게 전달되는 단어예요.</div>`;
@@ -751,7 +790,7 @@ function lyricView(step){
   case 3: return `
     <h2>🎚️ 어떤 노래로 만들까요?</h2>
     <p class="desc">글을 가사로 바꿀 때 적용할 방향을 정해요.</p>
-    <div class="group"><h3>노래 장르 <span class="cnt">최대 2개</span></h3><div class="chips" data-max="2">${SONG_GENRES.map(x=>chip("lyrics.genre",x,false)).join("")}</div></div>
+    <div class="group"><h3>노래 장르 <span class="cnt">최대 2개${sampleCount(SONG_GENRES)?" · ▶ 누르면 샘플 듣기":""}</span></h3><div class="chips" data-max="2">${SONG_GENRES.map(x=>chip("lyrics.genre",x,false)).join("")}</div></div>
     <div class="group"><h3>화자 시점</h3>${radioChips("lyrics.pov",POVS)}</div>
     <div class="group"><h3>말투</h3>${radioChips("lyrics.tone",TONES)}</div>
     <div class="group"><h3>감정 흐름</h3>${radioChips("lyrics.flow",FLOWS)}</div>
@@ -849,7 +888,7 @@ function afterRender(keep){
     const q=gs.value.trim().toLowerCase();
     document.querySelectorAll("#gList .group").forEach(g=>{
       let any=false;
-      g.querySelectorAll(".chip").forEach(ch=>{ const hit=!q||ch.textContent.toLowerCase().includes(q); ch.classList.toggle("hide",!hit); any=any||hit; });
+      g.querySelectorAll(".chip").forEach(ch=>{ const hit=!q||ch.textContent.toLowerCase().includes(q); (ch.closest(".cw")||ch).classList.toggle("hide",!hit); any=any||hit; });
       g.style.display=any?"":"none";
     });
   });
@@ -883,6 +922,7 @@ document.addEventListener("click",e=>{
     }
     save(); updLive(); return;
   }
+  if(d.play){ const on=t.classList.contains("on"); if(on) closePlayer(); else openPlayer(d.play); return; }
   if(d.tag){ insertAtCursor($("#finalLyrics"), (t.dataset.tag)+"\n"); return; }
   if(d.copy){
     const L=S.lyrics,c=S.compose;
@@ -891,6 +931,7 @@ document.addEventListener("click",e=>{
     copy(map[d.copy]||""); return;
   }
   switch(d.act){
+    case "closePlayer": closePlayer(); break;
     case "home": S.mode=null; save(); render(); break;
     case "prev": if(S.step>0){S.step--; save(); render();} break;
     case "next": S.step++; save(); render(); break;
@@ -937,6 +978,7 @@ function insertAtCursor(ta,text){
   ta.dispatchEvent(new Event("input",{bubbles:true}));
 }
 
+document.addEventListener("keydown",e=>{ if(e.key==="Escape" && !$("#player").hidden) closePlayer(); });
 render();
 </script>
 </body>
