@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 작사 · AI 작곡 프롬프트 스튜디오</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+:root{
+  --bg:#0f1024; --bg2:#171936; --card:#1e2145; --card2:#262a56; --line:#33386b;
+  --text:#eef0ff; --sub:#a9aed8; --muted:#7c82b5;
+  --lyric:#ff8fb1; --lyric2:#ffb38a; --comp:#7cc8ff; --comp2:#9f8cff;
+  --ok:#5fe0a8; --warn:#ffd36b;
+  --radius:18px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%}
+body{
+  font-family:Pretendard,"Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  background:radial-gradient(1200px 600px at 10% -10%,#2a1f5a 0%,transparent 60%),
+             radial-gradient(1000px 600px at 110% 10%,#123a5a 0%,transparent 55%),var(--bg);
+  color:var(--text);font-size:17px;line-height:1.6;
+}
+button{font-family:inherit;cursor:pointer}
+input,textarea,select{font-family:inherit;font-size:16px}
+.wrap{max-width:1180px;margin:0 auto;padding:22px 20px 40px}
+header.top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:19px;cursor:pointer}
+.brand .dot{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--lyric),var(--comp2));display:grid;place-items:center;font-size:18px}
+.top-actions{display:flex;gap:8px}
+.btn{border:1px solid var(--line);background:var(--card);color:var(--text);padding:10px 16px;border-radius:12px;font-size:15px;font-weight:600;transition:.15s}
+.btn:hover{background:var(--card2);transform:translateY(-1px)}
+.btn.primary{border:none;background:linear-gradient(135deg,var(--accent,var(--comp)),var(--accent2,var(--comp2)));color:#14152b}
+.btn.ghost{background:transparent}
+.btn.sm{padding:6px 12px;font-size:14px;border-radius:10px}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+
+/* HOME */
+.hero{text-align:center;padding:40px 10px 26px}
+.hero .eyebrow{display:inline-block;padding:6px 14px;border-radius:999px;background:#ffffff12;color:var(--sub);font-size:14px;margin-bottom:16px}
+.hero h1{font-size:clamp(30px,5vw,50px);line-height:1.2;font-weight:900;letter-spacing:-1px}
+.hero h1 .g1{background:linear-gradient(90deg,var(--lyric),var(--lyric2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero h1 .g2{background:linear-gradient(90deg,var(--comp),var(--comp2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p{color:var(--sub);margin-top:14px;font-size:18px}
+.choices{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:26px}
+.choice{position:relative;overflow:hidden;border-radius:26px;padding:34px 30px;border:1px solid var(--line);background:var(--card);text-align:left;color:var(--text);transition:.2s;min-height:300px;display:flex;flex-direction:column}
+.choice:hover{transform:translateY(-4px);box-shadow:0 20px 50px #0007}
+.choice.l{background:linear-gradient(160deg,#3b1e44 0%,#1e2145 70%)}
+.choice.c{background:linear-gradient(160deg,#16365a 0%,#1e2145 70%)}
+.choice .ic{font-size:54px;line-height:1}
+.choice h2{font-size:34px;margin:16px 0 6px;font-weight:900}
+.choice.l h2{color:var(--lyric)} .choice.c h2{color:var(--comp)}
+.choice p{color:var(--sub);font-size:16px}
+.choice ol{margin-top:16px;padding-left:0;list-style:none;display:flex;flex-wrap:wrap;gap:6px}
+.choice ol li{font-size:13px;padding:4px 10px;border-radius:999px;background:#ffffff12;color:#d9dcff}
+.choice .go{margin-top:auto;padding-top:20px;font-weight:800;font-size:17px}
+.flow{margin-top:30px;background:#ffffff08;border:1px dashed var(--line);border-radius:var(--radius);padding:20px 24px}
+.flow h3{font-size:17px;margin-bottom:10px}
+.flow-steps{line-height:2;color:var(--sub);font-size:15px}
+.flow-steps b{color:var(--text)}
+.flow-steps .arr{color:var(--muted)}
+
+/* STEPPER */
+.stepper{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:18px;scrollbar-width:thin}
+.stepper::-webkit-scrollbar{height:6px}.stepper::-webkit-scrollbar-track{background:transparent}.stepper::-webkit-scrollbar-thumb{background:#ffffff22;border-radius:6px}
+.stp{flex:1 0 auto;min-width:96px;border:none;background:var(--card);color:var(--muted);border-radius:12px;padding:10px 12px;font-size:14px;font-weight:700;text-align:left;border-bottom:3px solid transparent}
+.stp .n{display:block;font-size:12px;opacity:.8}
+.stp.done{color:var(--sub);border-bottom-color:var(--accent)}
+.stp.on{background:var(--card2);color:var(--text);border-bottom-color:var(--accent2)}
+
+.panel{background:var(--bg2);border:1px solid var(--line);border-radius:24px;padding:28px}
+.panel h2{font-size:28px;font-weight:900;letter-spacing:-.5px}
+.panel .desc{color:var(--sub);margin:6px 0 20px}
+.tip{background:#ffffff0c;border-left:4px solid var(--accent);padding:12px 16px;border-radius:10px;color:#d6d9ff;font-size:15px;margin:14px 0}
+.tip b{color:var(--text)}
+
+.grid-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}
+.card-opt{background:var(--card);border:2px solid transparent;border-radius:16px;padding:18px;text-align:left;color:var(--text);transition:.15s}
+.card-opt:hover{background:var(--card2)}
+.card-opt.sel{border-color:var(--accent);background:linear-gradient(160deg,#ffffff14,var(--card))}
+.card-opt .e{font-size:30px}
+.card-opt h4{font-size:18px;margin:6px 0 4px}
+.card-opt p{font-size:14px;color:var(--sub);line-height:1.5}
+
+.group{margin-top:22px}
+.group h3{font-size:16px;color:var(--sub);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.group h3 .cnt{font-size:12px;color:var(--muted);font-weight:500}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--line);background:var(--card);color:var(--text);padding:8px 14px;border-radius:999px;font-size:15px;transition:.12s;display:inline-flex;align-items:center;gap:6px}
+.chip small{color:var(--muted);font-size:12px}
+.chip:hover{border-color:var(--accent)}
+.chip.sel{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#14152b;border-color:transparent;font-weight:700}
+.chip.sel small{color:#14152bb0}
+.chip.hide{display:none}
+
+.search{width:100%;padding:14px 18px;border-radius:14px;border:1px solid var(--line);background:var(--card);color:var(--text);font-size:17px}
+.search:focus,.field:focus{outline:2px solid var(--accent);border-color:transparent}
+.catnav{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 4px}
+.catnav button{border:none;background:#ffffff10;color:var(--sub);padding:6px 12px;border-radius:999px;font-size:13px}
+.catnav button:hover{background:#ffffff22;color:var(--text)}
+
+.field{width:100%;padding:13px 16px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--text);line-height:1.7}
+textarea.field{resize:vertical;min-height:110px}
+label.lb{display:block;font-weight:700;margin:16px 0 8px}
+label.lb small{color:var(--muted);font-weight:500;margin-left:6px}
+
+.row{display:flex;gap:16px;flex-wrap:wrap}
+.row>*{flex:1 1 260px}
+
+.bpm-box{background:var(--card);border-radius:16px;padding:20px}
+.bpm-val{font-size:44px;font-weight:900;color:var(--accent)}
+.bpm-val small{font-size:16px;color:var(--sub);font-weight:600;margin-left:6px}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.bpm-marks{display:flex;justify-content:space-between;color:var(--muted);font-size:12px;margin-top:4px}
+
+.nav{display:flex;justify-content:space-between;gap:10px;margin-top:28px;flex-wrap:wrap}
+
+/* live preview bar */
+.live{position:sticky;bottom:12px;margin-top:18px;background:#0b0c1ef2;backdrop-filter:blur(8px);border:1px solid var(--line);border-radius:16px;padding:12px 16px;display:flex;gap:12px;align-items:center;z-index:5}
+.live .lbl{font-size:12px;color:var(--muted);white-space:nowrap}
+.live .txt{flex:1;font-family:Consolas,"D2Coding",monospace;font-size:13px;color:#cfe7ff;max-height:44px;overflow:auto}
+
+/* output */
+.out{background:#0b0c1e;border:1px solid var(--line);border-radius:16px;padding:18px;position:relative}
+.out h4{font-size:15px;color:var(--sub);margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.out pre{white-space:pre-wrap;word-break:break-word;font-family:Consolas,"D2Coding",Pretendard,monospace;font-size:15px;line-height:1.7;color:#e7ecff}
+.count{font-size:12px;color:var(--muted)}
+.count.over{color:var(--warn)}
+.ko-explain{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.ko-explain span{background:#ffffff0e;border-radius:10px;padding:6px 10px;font-size:13px;color:#d6d9ff}
+.ko-explain span b{color:var(--accent);margin-right:4px}
+.links{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.links a{color:var(--text);text-decoration:none}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.tabs{display:flex;gap:6px;margin-bottom:14px}
+.tabs button{border:none;background:var(--card);color:var(--sub);padding:10px 16px;border-radius:12px;font-weight:700}
+.tabs button.on{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#14152b}
+.tagbar{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.tagbar button{border:1px dashed var(--line);background:transparent;color:var(--sub);padding:4px 10px;border-radius:8px;font-size:13px}
+.tagbar button:hover{color:var(--text);border-color:var(--accent)}
+.linecount{background:#0b0c1e;border:1px solid var(--line);border-radius:12px;padding:12px;max-height:420px;overflow:auto;font-size:14px}
+.linecount div{display:flex;justify-content:space-between;gap:10px;padding:2px 0;border-bottom:1px solid #ffffff08}
+.linecount .tg{color:var(--accent);font-weight:700}
+.linecount .n{color:var(--muted);font-variant-numeric:tabular-nums}
+.linecount .n.long{color:var(--warn)}
+.q-card{background:var(--card);border-radius:14px;padding:14px 16px;margin-top:12px}
+.q-card .q{font-weight:700;margin-bottom:8px;display:flex;gap:8px}
+.q-card .q .qn{color:var(--accent)}
+.q-card textarea{min-height:70px}
+.example{font-size:14px;color:var(--sub);background:#ffffff08;border-radius:12px;padding:12px 14px;margin-top:10px;white-space:pre-wrap}
+.checklist{list-style:none;display:grid;gap:6px;margin-top:8px}
+.checklist li{background:var(--card);padding:10px 14px;border-radius:10px;font-size:15px}
+.checklist li::before{content:"✔ ";color:var(--ok)}
+.summary-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.summary-tags span{font-size:13px;background:#ffffff10;padding:4px 10px;border-radius:999px;color:#dfe2ff}
+
+.toast{position:fixed;left:50%;bottom:30px;transform:translateX(-50%) translateY(30px);opacity:0;background:#fff;color:#14152b;padding:12px 20px;border-radius:12px;font-weight:700;transition:.25s;z-index:99;pointer-events:none}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+footer.credit{text-align:center;color:var(--muted);font-size:14px;padding:30px 0 10px;letter-spacing:.3px}
+footer.credit b{background:linear-gradient(90deg,var(--lyric),var(--comp));-webkit-background-clip:text;background-clip:text;color:transparent;font-weight:800}
+
+body.mode-lyrics{--accent:var(--lyric);--accent2:var(--lyric2)}
+body.mode-compose{--accent:var(--comp);--accent2:var(--comp2)}
+
+@media (max-width:780px){
+  .choices,.two{grid-template-columns:1fr}
+  .panel{padding:20px}
+  .live{flex-direction:column;align-items:stretch}
+}
+@media print{
+  header.top,.stepper,.nav,.live,.links,.btn{display:none!important}
+  body{background:#fff;color:#000}
+  .panel,.out{background:#fff;border:none}
+  .out pre{color:#000}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand" id="homeBtn"><span class="dot">♪</span><span>AI 작사·작곡 프롬프트 스튜디오</span></div>
+    <div class="top-actions" id="topActions"></div>
+  </header>
+  <main id="app"></main>
+  <footer class="credit">By <b>Mindstream LAB Awesome JWY</b></footer>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* =========================================================
+   데이터
+   ========================================================= */
+const GENRES = {
+  "팝 Pop":[
+    ["팝","pop"],["댄스 팝","dance pop"],["신스팝","synthpop"],["일렉트로팝","electropop"],["인디 팝","indie pop"],
+    ["드림 팝","dream pop"],["베드룸 팝","bedroom pop"],["시티팝","city pop"],["버블검 팝","bubblegum pop"],["아트 팝","art pop"],
+    ["하이퍼팝","hyperpop"],["바로크 팝","baroque pop"],["챔버 팝","chamber pop"],["어쿠스틱 팝","acoustic pop"],["파워 발라드","power ballad"],
+    ["소프트 록","soft rock"],["애덜트 컨템퍼러리","adult contemporary"],["틴 팝","teen pop"]
+  ],
+  "한국 음악 K-Music":[
+    ["K-POP","k-pop"],["K-발라드","korean ballad"],["K-인디","korean indie"],["트로트","trot, korean trot"],["세미 트로트","modern trot, dance trot"],
+    ["뽕짝 메들리","ppongjjak, korean retro trot"],["90년대 가요","90s k-pop"],["2000년대 가요","2000s k-pop"],["7080 포크","70s korean folk"],["걸그룹 댄스","k-pop girl group dance"],
+    ["보이그룹 퍼포먼스","k-pop boy group, powerful performance"],["드라마 OST 발라드","k-drama ost ballad"],["국악 퓨전","korean traditional fusion"],["판소리 퓨전","pansori fusion"],["민요","korean folk song, minyo"],
+    ["아리랑 풍","arirang style, korean folk melody"],["동요","korean children's song"],["K-힙합","korean hip hop"],["K-R&B","korean r&b"]
+  ],
+  "록 Rock":[
+    ["록","rock"],["얼터너티브 록","alternative rock"],["인디 록","indie rock"],["펑크 록","punk rock"],["팝 펑크","pop punk"],
+    ["하드 록","hard rock"],["클래식 록","classic rock"],["사이키델릭 록","psychedelic rock"],["그런지","grunge"],["브릿팝","britpop"],
+    ["슈게이즈","shoegaze"],["포스트 록","post-rock"],["프로그레시브 록","progressive rock"],["개러지 록","garage rock"],["블루스 록","blues rock"],
+    ["서프 록","surf rock"],["이모","emo"],["매스 록","math rock"],["로커빌리","rockabilly"],["사우던 록","southern rock"],
+    ["J-록","j-rock"],["스타디움 록","stadium rock, arena rock"]
+  ],
+  "메탈 Metal":[
+    ["헤비메탈","heavy metal"],["스래시 메탈","thrash metal"],["메탈코어","metalcore"],["심포닉 메탈","symphonic metal"],["뉴메탈","nu metal"],
+    ["파워 메탈","power metal"],["데스 메탈","death metal"],["둠 메탈","doom metal"],["프로그레시브 메탈","progressive metal"],["글램 메탈","glam metal"]
+  ],
+  "힙합·R&B·소울 Hip-hop/R&B":[
+    ["힙합","hip hop"],["붐뱁","boom bap"],["트랩","trap"],["드릴","drill"],["로파이 힙합","lo-fi hip hop"],
+    ["재즈 힙합","jazz hop"],["지펑크","g-funk"],["올드스쿨 힙합","old school hip hop"],["이모 랩","emo rap"],["멜로딕 랩","melodic rap"],
+    ["R&B","r&b"],["컨템퍼러리 R&B","contemporary r&b"],["얼터너티브 R&B","alternative r&b"],["네오 소울","neo soul"],["소울","soul"],
+    ["모타운","motown"],["펑크(Funk)","funk"],["가스펠","gospel"],["뉴잭스윙","new jack swing"],["디스코","disco"],["누 디스코","nu disco"]
+  ],
+  "일렉트로닉 Electronic":[
+    ["EDM","edm"],["하우스","house"],["딥 하우스","deep house"],["테크 하우스","tech house"],["프로그레시브 하우스","progressive house"],
+    ["프렌치 하우스","french house"],["트로피컬 하우스","tropical house"],["테크노","techno"],["트랜스","trance"],["덥스텝","dubstep"],
+    ["드럼앤베이스","drum and bass"],["리퀴드 DnB","liquid drum and bass"],["브레이크비트","breakbeat"],["UK 개러지","uk garage"],["퓨처 베이스","future bass"],
+    ["일렉트로 스윙","electro swing"],["신스웨이브","synthwave"],["베이퍼웨이브","vaporwave"],["칩튠","chiptune"],["IDM","idm"],
+    ["다운템포","downtempo"],["트립합","trip hop"],["칠웨이브","chillwave"],["하드스타일","hardstyle"],["글리치","glitch"],
+    ["일렉트로니카","electronica"],["유로댄스","eurodance"],["저지 클럽","jersey club"],["빅룸","big room house"],["앰비언트 테크노","ambient techno"]
+  ],
+  "재즈·블루스 Jazz/Blues":[
+    ["재즈","jazz"],["스윙","swing"],["비밥","bebop"],["쿨 재즈","cool jazz"],["스무스 재즈","smooth jazz"],
+    ["재즈 퓨전","jazz fusion"],["빅밴드","big band"],["재즈 보컬","vocal jazz"],["라운지","lounge"],["애시드 재즈","acid jazz"],
+    ["재즈 피아노 트리오","jazz piano trio"],["블루스","blues"],["델타 블루스","delta blues"],["시카고 블루스","chicago blues"],["래그타임","ragtime"],["보사노바","bossa nova"]
+  ],
+  "클래식·영화음악 Classical/Cinematic":[
+    ["클래식","classical"],["바로크","baroque"],["낭만주의","romantic era classical"],["현악 4중주","string quartet"],["피아노 솔로","solo piano"],
+    ["오케스트라","orchestral"],["영화음악","cinematic score"],["에픽 트레일러","epic trailer music"],["오페라","opera"],["뮤지컬","broadway musical"],
+    ["합창","choral"],["미니멀리즘","minimalism"],["게임 음악","video game soundtrack"],["판타지 RPG","fantasy rpg soundtrack"],["애니메이션 OST","anime soundtrack"],
+    ["뉴에이지 피아노","new age piano"],["네오 클래시컬","neoclassical"],["디즈니풍","disney style musical"]
+  ],
+  "포크·컨트리 Folk/Country":[
+    ["포크","folk"],["인디 포크","indie folk"],["어쿠스틱 싱어송라이터","acoustic singer-songwriter"],["포크 록","folk rock"],["컨트리","country"],
+    ["컨트리 팝","country pop"],["블루그래스","bluegrass"],["아메리카나","americana"],["켈틱","celtic"],["웨스턴","western"],["캠프파이어 송","campfire song"]
+  ],
+  "라틴 Latin":[
+    ["라틴 팝","latin pop"],["레게톤","reggaeton"],["살사","salsa"],["바차타","bachata"],["탱고","tango"],
+    ["삼바","samba"],["플라멩코","flamenco"],["쿰비아","cumbia"],["마리아치","mariachi"],["메렝게","merengue"],["룸바","rumba"],["맘보","mambo"]
+  ],
+  "월드뮤직 World":[
+    ["레게","reggae"],["댄스홀","dancehall"],["스카","ska"],["아프로비츠","afrobeats"],["아마피아노","amapiano"],
+    ["하이라이프","highlife"],["J-POP","j-pop"],["엔카","enka"],["시부야케이","shibuya-kei"],["애니송","anime opening song"],
+    ["C-POP","c-pop"],["중국 전통","chinese traditional, guzheng"],["일본 전통","japanese traditional, koto, shakuhachi"],["볼리우드","bollywood"],["아랍 음악","arabic music"],
+    ["하와이안","hawaiian"],["샹송","french chanson"],["칸초네","italian canzone"],["파두","fado"],["발칸 브라스","balkan brass"],
+    ["클레즈머","klezmer"],["몽골 흐미","mongolian throat singing"],["아이리시","irish folk"],["터키 음악","turkish music"]
+  ],
+  "생활·기능 음악 Others":[
+    ["로파이","lo-fi"],["앰비언트","ambient"],["뉴에이지","new age"],["명상 음악","meditation music"],["자장가","lullaby"],
+    ["크리스마스 캐럴","christmas carol"],["CCM·워십","ccm, worship"],["찬송가","hymn"],["행진곡","march"],["왈츠","waltz"],
+    ["폴카","polka"],["아카펠라","a cappella"],["바버샵 쿼텟","barbershop quartet"],["광고 징글","commercial jingle"],["응원가","stadium anthem, chant"],
+    ["8비트 게임","8-bit"],["뮤직박스","music box"],["생일 축하곡","happy birthday song"],["웨딩 송","wedding song"],["스포츠 테마","sports theme"]
+  ]
+};
+
+const MOODS = {
+  "밝은 감정":[["행복한","happy"],["신나는","upbeat"],["설레는","fluttering, excited"],["희망찬","hopeful"],["상쾌한","fresh"],["사랑스러운","lovely"],["유쾌한","playful"],["자신감 넘치는","confident"],["축제 같은","festive"],["승리의","triumphant"]],
+  "잔잔한 감정":[["따뜻한","warm"],["편안한","relaxing"],["몽환적인","dreamy"],["평화로운","peaceful"],["포근한","cozy"],["잔잔한","calm"],["순수한","innocent"],["감성적인","sentimental"],["로맨틱한","romantic"],["여유로운","laid-back"]],
+  "깊은 감정":[["슬픈","sad"],["그리운","longing"],["애절한","heartbreaking"],["향수 어린","nostalgic"],["쓸쓸한","lonely"],["우울한","melancholic"],["씁쓸한","bittersweet"],["사색적인","introspective"],["감동적인","emotional, moving"],["위로하는","comforting"]],
+  "강렬한 감정":[["웅장한","epic"],["강렬한","intense"],["격정적인","passionate"],["어두운","dark"],["긴장감 있는","tense"],["분노한","angry"],["반항적인","rebellious"],["미스터리한","mysterious"],["섹시한","sensual"],["거친","gritty"]],
+  "독특한 분위기":[["신비로운","mystical"],["몽롱한","hazy, psychedelic"],["미래적인","futuristic"],["레트로한","retro"],["동화 같은","whimsical, fairytale"],["영화 같은","cinematic"],["도시적인","urban"],["자연스러운","organic"],["으스스한","eerie"],["엉뚱한","quirky"]]
+};
+
+const FEELS = [["4/4 기본 박자","4/4 time"],["3/4 왈츠","3/4 waltz time"],["6/8 박자","6/8 time"],["셔플·스윙","shuffle swing groove"],["하프타임","half-time feel"],
+  ["포 온 더 플로어","four-on-the-floor kick"],["싱코페이션","syncopated rhythm"],["느긋한 그루브","laid-back groove"],["질주하는 비트","driving beat"],["루바토(자유 템포)","rubato, free tempo"],
+  ["점점 빨라지는","accelerating tempo"],["바운스","bouncy rhythm"],["트랩 하이햇","trap hi-hats"],["브레이크비트","breakbeat drums"],["레게 오프비트","offbeat skank"]];
+
+const TEMPO_PRESET = [["아주 느리게 (60)",60],["느리게 (75)",75],["보통 (95)",95],["경쾌하게 (115)",115],["빠르게 (128)",128],["아주 빠르게 (150)",150],["질주 (174)",174]];
+
+const INSTRUMENTS = {
+  "건반":[["피아노","piano"],["그랜드 피아노","grand piano"],["업라이트 피아노","upright piano"],["로즈 일렉피아노","rhodes electric piano"],["오르간","hammond organ"],["파이프 오르간","pipe organ"],["하프시코드","harpsichord"],["신스 패드","synth pad"],["아날로그 신스","analog synth lead"],["아르페지에이터","arpeggiated synth"]],
+  "기타·현":[["어쿠스틱 기타","acoustic guitar"],["나일론 기타","nylon guitar"],["일렉 기타(클린)","clean electric guitar"],["디스토션 기타","distorted electric guitar"],["슬라이드 기타","slide guitar"],["12현 기타","12-string guitar"],["펑키 기타 커팅","funky guitar"],["우쿨렐레","ukulele"],["밴조","banjo"],["만돌린","mandolin"]],
+  "베이스":[["일렉 베이스","bass guitar"],["콘트라베이스","upright bass"],["808 베이스","808 bass"],["신스 베이스","synth bass"],["슬랩 베이스","slap bass"]],
+  "드럼·타악":[["라이브 드럼","live drums"],["드럼 머신","drum machine"],["브러시 드럼","brushed drums"],["핸드클랩","handclaps"],["카혼","cajon"],["퍼커션","percussion"],["봉고·콩가","bongos, congas"],["탬버린","tambourine"],["타이코","taiko drums"],["팀파니","timpani"]],
+  "오케스트라 현악":[["현악 앙상블","string section"],["바이올린","violin"],["비올라","viola"],["첼로","cello"],["하프","harp"],["피치카토 현악","pizzicato strings"]],
+  "관악":[["브라스 섹션","brass section"],["트럼펫","trumpet"],["트롬본","trombone"],["색소폰","saxophone"],["플루트","flute"],["클라리넷","clarinet"],["오보에","oboe"],["프렌치 호른","french horn"],["하모니카","harmonica"],["아코디언","accordion"]],
+  "한국 전통 악기":[["가야금","gayageum"],["거문고","geomungo"],["해금","haegeum"],["대금","daegeum"],["피리","piri"],["장구","janggu"],["북","buk drum"],["꽹과리","kkwaenggwari"],["태평소","taepyeongso"],["아쟁","ajaeng"]],
+  "세계 악기·기타":[["고쟁","guzheng"],["얼후","erhu"],["코토","koto"],["시타르","sitar"],["타블라","tabla"],["우드","oud"],["백파이프","bagpipes"],["스틸 드럼","steel drums"],["칼림바","kalimba"],["마림바","marimba"],["비브라폰","vibraphone"],["글로켄슈필","glockenspiel"],["뮤직박스","music box"],["휘파람","whistling"],["신스 보이스 촙","vocal chops"]]
+};
+
+const VOCAL_TYPE = [["남성 보컬","male vocals"],["여성 보컬","female vocals"],["남녀 듀엣","male and female duet"],["그룹 보컬","group vocals"],["합창단","choir"],["어린이 목소리","children's choir"],["연주곡 (보컬 없음)","instrumental"]];
+const VOCAL_TONE = [["부드러운","soft vocals"],["따뜻한","warm vocals"],["허스키한","husky voice"],["숨소리 섞인","breathy vocals"],["파워풀한 고음","powerful belting"],["거친","raspy vocals"],["맑은","clear bright vocals"],["가성","airy falsetto"],["낮은 저음","deep baritone"],["속삭이는","whispering vocals"],["소울풀한","soulful vocals"],["비브라토","vibrato"],["감정이 북받친","emotional delivery"],["담담한","understated vocals"],["꺾기(트로트)","trot vocal ornamentation, kkeokki"]];
+const VOCAL_STYLE = [["랩","rap"],["멜로딕 랩","melodic rap"],["내레이션","spoken word"],["화음 코러스","vocal harmonies"],["애드리브","ad-libs"],["오토튠","auto-tune"],["오페라 창법","operatic vocals"],["크루너 창법","crooner"],["가스펠 콰이어","gospel choir backing"],["떼창","crowd chant"],["콜 앤 리스폰스","call and response"],["허밍","humming"]];
+const LANGS = [["한국어","korean lyrics"],["영어","english lyrics"],["한국어+영어","korean and english lyrics"],["일본어","japanese lyrics"],["스페인어","spanish lyrics"]];
+
+const ERAS = [["1950년대","1950s"],["1960년대","1960s"],["1970년대","1970s"],["1980년대","1980s"],["1990년대","1990s"],["2000년대","2000s"],["2010년대","2010s"],["최신 트렌드","modern 2020s"],["미래적","futuristic"]];
+const PRODUCTION = [["로파이 질감","lo-fi texture"],["깔끔한 고음질","polished hi-fi production"],["아날로그 따뜻함","warm analog"],["LP 잡음","vinyl crackle"],["테이프 질감","tape saturation"],["공간감 큰 리버브","lush reverb"],["건조하고 가까운","dry intimate mix"],["라이브 공연장","live concert recording"],["스타디움 사운드","stadium sound"],["넓은 스테레오","wide stereo"],["미니멀","minimal arrangement"],["풍성한 레이어","rich layered arrangement"],["펀치감 있는 믹스","punchy mix"],["묵직한 저음","heavy bass"],["어쿠스틱 언플러그드","unplugged acoustic"],["홈 레코딩","bedroom recording"]];
+const STRUCTURE = [["짧은 인트로","short intro"],["긴 인트로","long atmospheric intro"],["점점 고조되는 빌드업","gradual build-up"],["강렬한 드롭","big drop"],["브릿지","bridge"],["마지막 후렴 전조(키 업)","key change in final chorus"],["기타 솔로","guitar solo"],["악기 간주","instrumental break"],["댄스 브레이크","dance break"],["어쿠스틱으로 시작해 풀밴드로","starts acoustic, builds to full band"],["페이드 아웃","fade out ending"],["깔끔한 엔딩","clean ending"],["캐치한 후렴","catchy chorus"],["반복되는 훅","repetitive hook"]];
+const KEYS = [["선택 안 함",""],["장조 (밝게)","major key"],["단조 (어둡게)","minor key"],["C장조","C major"],["A단조","A minor"],["G장조","G major"],["E단조","E minor"],["D장조","D major"],["F장조","F major"],["B♭장조","Bb major"]];
+
+/* ---- 작사 데이터 ---- */
+const WRITE_STYLES = [
+  {id:"diary",e:"📔",name:"일기",desc:"하루의 장면을 솔직하게. 구체적인 장면이 가사의 힘이 됩니다.",
+   qs:["언제, 어디서 있었던 일인가요?","그때 무슨 일이 있었나요? (장면을 사진처럼)","그 순간 어떤 감정이 들었나요?","가장 선명하게 남은 소리·냄새·색깔은?","하루를 마치며 나에게 하고 싶은 말은?"],
+   ex:"2024년 3월 어느 비 오는 화요일. 퇴근길 버스 창에 맺힌 빗방울을 보다가 엄마 생각이 났다…"},
+  {id:"letter",e:"✉️",name:"편지",desc:"한 사람에게 건네는 말. 발라드·OST에 특히 잘 어울립니다.",
+   qs:["누구에게 쓰는 편지인가요?","그 사람과의 가장 소중한 기억 하나는?","그동안 하지 못한 말은 무엇인가요?","그 사람에게 고마운 점, 미안한 점은?","앞으로 그 사람에게 바라는 것은?"],
+   ex:"사랑하는 아빠에게. 아빠가 자전거 뒤를 잡아주던 그 봄날, 나는 아빠가 손을 놓은 줄도 몰랐어요…"},
+  {id:"poem",e:"🌙",name:"시",desc:"이미지와 비유로 압축한 글. 리듬이 있어 가사로 옮기기 쉽습니다.",
+   qs:["마음에 떠오르는 장면·이미지 하나는?","그 감정을 무엇에 비유할 수 있을까요? (예: 나는 ~같다)","여러 번 반복하고 싶은 한 문장은?","시의 마지막 줄은 어떻게 끝내고 싶나요?"],
+   ex:"너는 늦은 오후의 햇살\n닿으면 따뜻하고\n잡으려 하면 사라지는"},
+  {id:"essay",e:"☕",name:"수필(에세이)",desc:"경험과 생각을 담담하게. 메시지가 분명한 노래가 됩니다.",
+   qs:["이야기의 출발점이 된 경험은?","그 경험에서 무엇을 느끼고 깨달았나요?","그 깨달음이 지금의 나에게 어떤 의미인가요?","비슷한 경험을 한 사람에게 해주고 싶은 말은?"],
+   ex:"마흔이 넘어 처음 혼자 여행을 떠났다. 낯선 역 앞에서 길을 잃었을 때, 이상하게도 두렵지 않았다…"},
+  {id:"monologue",e:"🎭",name:"독백",desc:"혼자 되뇌는 속마음. 감정이 깊은 노래가 됩니다.",
+   qs:["혼자 있을 때 자주 떠오르는 생각은?","누구에게도 말하지 못한 마음은?","거울 속 나에게 하고 싶은 말은?","스스로에게 거는 주문 한 마디는?"],
+   ex:"괜찮다고 말하는 게 습관이 됐어. 사실은 하나도 괜찮지 않은 날에도…"},
+  {id:"dialog",e:"💬",name:"대화체",desc:"주고받는 말로 장면을 살립니다. 듀엣곡·뮤지컬에 좋습니다.",
+   qs:["누구와 나눈 대화인가요?","실제로 오갔던 말을 그대로 적어보세요.","그때 하고 싶었지만 하지 못한 대답은?","지금 다시 만난다면 어떤 대화를 하고 싶나요?"],
+   ex:"\"밥은 먹었니?\" \"응, 먹었어.\" 사실 안 먹었다. 엄마의 그 짧은 질문이 왜 그렇게 울컥했을까…"},
+  {id:"story",e:"📖",name:"짧은 이야기",desc:"주인공·사건·결말이 있는 이야기. 스토리텔링 노래가 됩니다.",
+   qs:["주인공은 누구인가요? (나, 혹은 가상의 인물)","어떤 장소·시대가 배경인가요?","어떤 사건이 일어나나요?","이야기는 어떻게 끝나나요? (반전도 좋아요)"],
+   ex:"골목 끝 작은 세탁소 할아버지는 40년 동안 매일 아침 6시에 셔터를 올렸다. 그런데 어느 날…"},
+  {id:"memoir",e:"🕰️",name:"인생 회고",desc:"지나온 시절을 돌아보는 글. 성인 수강생에게 가장 울림이 큽니다.",
+   qs:["돌아가고 싶은(혹은 잊을 수 없는) 시절은 언제인가요?","그때의 나는 어떤 사람이었나요?","그 시절의 대표 장면·노래·물건은?","지금 돌아보면 어떤 마음이 드나요?","그 시절의 나에게 한마디 해준다면?"],
+   ex:"스물셋, 첫 월급을 받은 날. 봉투째 엄마에게 내밀었더니 엄마는 그 봉투를 한참 쓰다듬기만 했다…"},
+  {id:"sns",e:"📱",name:"SNS 짧은 글",desc:"짧고 강렬한 한 줄. 후렴(훅)을 만들기 좋습니다.",
+   qs:["오늘의 한 줄은?","이 글에 붙일 해시태그 3개는?","사람들이 '맞아!' 하고 공감할 포인트는?"],
+   ex:"월요일 아침 7시 40분, 지하철은 또 꽉 찼다. 그래도 커피 한 잔이면 버틸 수 있어. #출근길 #직장인 #버티는중"},
+  {id:"travel",e:"✈️",name:"여행기",desc:"장소의 풍경과 감각. 시원하고 자유로운 노래에 어울립니다.",
+   qs:["어디로 떠났나요?","그곳에서 본 가장 인상적인 풍경은?","누구와 함께였나요? (혹은 혼자)","그곳에서 느낀 감정과 돌아와서 남은 것은?"],
+   ex:"제주 동쪽 바다, 새벽 다섯 시. 해가 뜨기 전 하늘은 보라색이었다…"},
+  {id:"wish",e:"🙏",name:"기도·소원",desc:"간절한 바람을 담은 글. 위로·희망의 노래가 됩니다.",
+   qs:["지금 가장 간절히 바라는 것은?","누구를 위한 바람인가요?","그 바람이 이루어진다면 어떤 모습일까요?","그때까지 스스로에게 해줄 약속은?"],
+   ex:"우리 아이가 세상에 나가서 너무 많이 아프지 않기를. 넘어져도 다시 웃을 수 있기를…"},
+  {id:"cheer",e:"🎉",name:"축하·응원 메시지",desc:"생일·결혼·퇴임·졸업 등 특별한 날을 위한 노래.",
+   qs:["누구를 위한 노래인가요?","어떤 날, 어떤 일을 축하하나요?","그 사람과 함께한 기억이나 그 사람의 특징은?","꼭 전하고 싶은 응원·축하의 말은?"],
+   ex:"30년 교직 생활을 마치는 김 선생님께. 매일 아침 교문 앞에서 아이들 이름을 불러주던 그 목소리를…"}
+];
+
+const THEMES = [["💕","사랑·설렘"],["💔","이별·그리움"],["👨‍👩‍👧","가족"],["👵","부모님"],["👶","자녀"],["🤝","친구·우정"],["🌸","청춘·추억"],["🏡","고향"],["💼","일·직장"],["🫂","위로·응원"],["🚀","꿈·도전"],["🪞","나 자신"],["🍂","계절·자연"],["🧳","여행"],["🐶","반려동물"],["🌅","인생·나이듦"],["🌏","사회·세상"],["☕","일상의 소확행"],["🎂","축하(생일·결혼)"],["🕊️","추모·기억"]];
+const FEELINGS = ["그리움","고마움","미안함","설렘","외로움","후회","희망","용기","자유","평온","분노","유쾌함","뭉클함","아쉬움","자부심","위로","사랑","기다림"];
+
+const SONG_GENRES = [["발라드","korean ballad"],["K-POP 댄스","k-pop girl group dance"],["트로트","trot, korean trot"],["어쿠스틱 포크","acoustic singer-songwriter"],["인디 팝","indie pop"],["R&B","r&b"],["힙합","hip hop"],["록","rock"],["시티팝","city pop"],["재즈","jazz"],["드라마 OST","k-drama ost ballad"],["뮤지컬","broadway musical"],["동요","korean children's song"],["자장가","lullaby"],["CCM·찬양","ccm, worship"],["국악 퓨전","korean traditional fusion"],["보사노바","bossa nova"],["EDM","edm"],["컨트리","country"],["포크","folk"]];
+const POVS = ["1인칭 '나'의 고백","'우리' 함께의 이야기","'너'에게 말 걸기 (2인칭)","3인칭 관찰자 (그/그녀의 이야기)"];
+const TONES = ["반말 구어체 (친근하게)","존댓말 (공손하고 따뜻하게)","시적인 문어체","담백한 일상어","사투리 섞기"];
+const FLOWS = ["잔잔하게 시작해 후렴에서 폭발","슬픔에서 희망으로","과거 회상 → 현재 → 미래 다짐","처음부터 끝까지 신나게","담담하게 유지하다 마지막에 뭉클하게","유머러스하게 풀다 진심으로 마무리"];
+const RHYMES = ["후렴 반복 훅을 강하게","줄 끝 각운 맞추기","줄 앞 두운 맞추기","말맛 나는 의성어·의태어","운율 자유롭게 (자연스러움 우선)"];
+const ENG_MIX = ["영어 없이 순수 한국어","후렴에만 짧은 영어 한 구절","영어를 자연스럽게 섞기 (K-POP 스타일)","전체 영어 가사"];
+const LENGTHS = ["짧게 (1~2분)","보통 (3분 내외)","길게 (4분 이상)"];
+const STRUCT_TPL = {
+  "기본 팝":["Intro","Verse 1","Pre-Chorus","Chorus","Verse 2","Pre-Chorus","Chorus","Bridge","Chorus","Outro"],
+  "발라드":["Intro","Verse 1","Verse 2","Chorus","Verse 3","Chorus","Bridge","Final Chorus","Outro"],
+  "K-POP 댄스":["Intro","Verse 1","Pre-Chorus","Chorus","Post-Chorus","Verse 2","Pre-Chorus","Chorus","Dance Break","Bridge","Final Chorus"],
+  "트로트":["Intro","Verse 1","Chorus","Interlude","Verse 2","Chorus","Chorus","Outro"],
+  "힙합":["Intro","Verse 1","Hook","Verse 2","Hook","Bridge","Hook","Outro"],
+  "포크·어쿠스틱":["Verse 1","Chorus","Verse 2","Chorus","Instrumental","Verse 3","Chorus","Outro"],
+  "짧은 곡":["Verse","Chorus","Outro"],
+  "동요·자장가":["Verse 1","Chorus","Verse 2","Chorus"]
+};
+const META_TAGS = ["[Intro]","[Verse 1]","[Verse 2]","[Pre-Chorus]","[Chorus]","[Post-Chorus]","[Bridge]","[Final Chorus]","[Hook]","[Rap]","[Interlude]","[Instrumental]","[Guitar Solo]","[Build]","[Drop]","[Outro]","[End]","[Whisper]","[Spoken]","[Male Vocal]","[Female Vocal]","[Duet]","[Choir]"];
+
+/* 한↔영 사전 */
+const KO = {};
+(function(){
+  const add = a => a.forEach(([k,e])=>{ if(e) KO[e]=k; });
+  Object.values(GENRES).forEach(add); Object.values(MOODS).forEach(add); Object.values(INSTRUMENTS).forEach(add);
+  [FEELS,VOCAL_TYPE,VOCAL_TONE,VOCAL_STYLE,LANGS,ERAS,PRODUCTION,STRUCTURE,KEYS].forEach(add);
+})();
+
+/* =========================================================
+   상태
+   ========================================================= */
+const DEFAULT = () => ({
+  mode:null, step:0,
+  compose:{genres:[],moods:[],bpm:100,useBpm:true,feels:[],instruments:[],vocalType:[],vocalTone:[],vocalStyle:[],lang:[],eras:[],production:[],structure:[],key:"",extra:"",exclude:"",title:""},
+  lyrics:{style:null,themes:[],customTheme:"",feelings:[],answers:{},text:"",genre:[],pov:POVS[0],tone:TONES[0],flow:FLOWS[0],rhyme:[RHYMES[0]],eng:ENG_MIX[0],length:LENGTHS[1],tpl:"기본 팝",hook:"",must:"",avoid:"",final:"",title:"",convTab:"ai"}
+});
+let S = load();
+function load(){
+  try{ const d = JSON.parse(localStorage.getItem("mslab-song-studio")); if(d){ const b=DEFAULT(); return {...b,...d,compose:{...b.compose,...d.compose},lyrics:{...b.lyrics,...d.lyrics}}; } }catch(e){}
+  return DEFAULT();
+}
+function save(){ localStorage.setItem("mslab-song-studio",JSON.stringify(S)); }
+
+/* =========================================================
+   유틸
+   ========================================================= */
+const $ = s => document.querySelector(s);
+const esc = s => String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function toast(m){ const t=$("#toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),1800); }
+function copy(text){
+  const done=()=>toast("복사했어요! 붙여넣기(Ctrl+V) 하세요");
+  if(navigator.clipboard && window.isSecureContext){ navigator.clipboard.writeText(text).then(done).catch(()=>fallback()); } else fallback();
+  function fallback(){ const ta=document.createElement("textarea"); ta.value=text; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove(); done(); }
+}
+function download(name,text){ name=name.replace(/[\\/:*?"<>|]/g,"_"); const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([text],{type:"text/plain;charset=utf-8"})); a.download=name; a.click(); }
+function getPath(p){ return p.split(".").reduce((o,k)=>o[k],S); }
+function chip(path,[ko,en],sub=true,v){
+  const arr=getPath(path); const val=v||en||ko; const on=arr.includes(val);
+  return `<button class="chip ${on?"sel":""}" data-path="${path}" data-val="${esc(val)}">${esc(ko)}${sub&&en?` <small>${esc(en)}</small>`:""}</button>`;
+}
+function chipGroup(title,path,list,max,sub=true){
+  return `<div class="group"><h3>${title}${max?` <span class="cnt">최대 ${max}개</span>`:""}</h3><div class="chips" data-max="${max||0}">${list.map(x=>chip(path,x,sub)).join("")}</div></div>`;
+}
+function radioChips(path,list){
+  const cur=getPath(path);
+  return `<div class="chips">${list.map(v=>`<button class="chip ${cur===v?"sel":""}" data-radio="${path}" data-val="${esc(v)}">${esc(v)}</button>`).join("")}</div>`;
+}
+function setPath(path,v){ const ks=path.split("."); const last=ks.pop(); ks.reduce((o,k)=>o[k],S)[last]=v; save(); }
+
+/* =========================================================
+   작곡 프롬프트 생성
+   ========================================================= */
+function composePrompt(){
+  const c=S.compose; const parts=[];
+  parts.push(...c.genres);
+  parts.push(...c.eras);
+  parts.push(...c.moods);
+  if(c.useBpm) parts.push(c.bpm+" BPM");
+  parts.push(...c.feels);
+  if(c.key) parts.push(c.key);
+  parts.push(...c.instruments);
+  if(c.vocalType.includes("instrumental")) parts.push("instrumental");
+  else parts.push(...c.vocalType,...c.vocalTone,...c.vocalStyle,...c.lang);
+  parts.push(...c.production,...c.structure);
+  if(c.extra.trim()) parts.push(c.extra.trim());
+  return [...new Set(parts)].join(", ");
+}
+function composeExplain(){
+  const c=S.compose; const out=[];
+  const f=(label,arr)=>{ if(arr.length) out.push([label,arr.map(e=>KO[e]||e).join(" · ")]); };
+  f("장르",c.genres); f("시대",c.eras); f("분위기",c.moods);
+  if(c.useBpm) out.push(["템포",c.bpm+" BPM ("+bpmName(c.bpm)+")"]);
+  f("리듬",c.feels); if(c.key) out.push(["조성",KO[c.key]||c.key]);
+  f("악기",c.instruments); if(c.vocalType.includes("instrumental")) f("보컬",["instrumental"]); else { f("보컬",[...c.vocalType,...c.vocalTone,...c.vocalStyle]); f("언어",c.lang); }
+  f("사운드",c.production); f("구조",c.structure); if(c.extra.trim()) out.push(["추가",c.extra.trim()]);
+  return out;
+}
+function bpmName(b){ return b<70?"아주 느림":b<90?"느림":b<110?"보통":b<125?"경쾌":b<140?"빠름":"아주 빠름"; }
+function composeTagsSkeleton(){
+  const c=S.compose; const inst=c.vocalType.includes("instrumental");
+  if(inst) return "[Intro]\n[Instrumental]\n[Build]\n[Drop]\n[Instrumental Break]\n[Outro]\n[End]";
+  let t=["[Intro]","[Verse 1]","(가사)","[Pre-Chorus]","(가사)","[Chorus]","(가사)","[Verse 2]","(가사)","[Chorus]","(가사)"];
+  if(c.structure.includes("guitar solo")) t.push("[Guitar Solo]");
+  if(c.structure.includes("dance break")) t.push("[Dance Break]");
+  if(c.structure.includes("instrumental break")) t.push("[Instrumental]");
+  t.push("[Bridge]","(가사)");
+  t.push(c.structure.includes("key change in final chorus")?"[Final Chorus - Key Change]":"[Final Chorus]","(가사)");
+  t.push(c.structure.includes("fade out ending")?"[Outro - Fade Out]":"[Outro]","[End]");
+  return t.join("\n");
+}
+
+/* =========================================================
+   작사 프롬프트 생성
+   ========================================================= */
+function josa(w,a,b){ const c=w.charCodeAt(w.length-1); if(c<0xAC00||c>0xD7A3) return a; return (c-0xAC00)%28?a:b; }
+function lyricStyle(){ return WRITE_STYLES.find(w=>w.id===S.lyrics.style); }
+function rawWriting(){
+  const L=S.lyrics, st=lyricStyle(); const lines=[];
+  if(st) st.qs.forEach((q,i)=>{ const a=(L.answers[i]||"").trim(); if(a && !L.text.includes(a)) lines.push(`- ${q}\n  → ${a}`); });
+  const qa=lines.join("\n");
+  return {qa, free:L.text.trim()};
+}
+function lyricPrompt(){
+  const L=S.lyrics, st=lyricStyle(); const {qa,free}=rawWriting();
+  const themes=[...L.themes, ...(L.customTheme.trim()?[L.customTheme.trim()]:[])];
+  const genre=L.genre.map(g=>KO[g]||g).join(", ")||"자유";
+  const tpl=STRUCT_TPL[L.tpl].map(x=>`[${x}]`).join(" → ");
+  return `당신은 한국 대중음악 전문 작사가입니다. 아래는 제가 직접 쓴 "${st?st.name:"자유"}" 형식의 글입니다.
+이 글에 담긴 저의 실제 경험과 감정을 살려서, 노래로 부를 수 있는 가사로 바꿔 주세요.
+
+■ 내가 쓴 글
+${[qa, free?"[자유롭게 쓴 글]\n"+free:""].filter(Boolean).join("\n\n")||"(아직 쓴 글이 없습니다)"}
+
+■ 가사 설정
+- 주제: ${themes.join(", ")||"글 내용에 맞게"}
+- 담고 싶은 감정: ${L.feelings.join(", ")||"글 내용에 맞게"}
+- 노래 장르: ${genre}
+- 화자 시점: ${L.pov}
+- 말투: ${L.tone}
+- 감정 흐름: ${L.flow}
+- 운율·리듬: ${L.rhyme.join(", ")||"자연스럽게"}
+- 영어 사용: ${L.eng}
+- 곡 길이: ${L.length}
+- 곡 구조: ${tpl}
+${L.hook.trim()?`- 후렴(훅)에 꼭 들어갈 핵심 문장: "${L.hook.trim()}"\n`:""}${L.must.trim()?`- 꼭 넣고 싶은 단어·표현: ${L.must.trim()}\n`:""}${L.avoid.trim()?`- 피하고 싶은 표현: ${L.avoid.trim()}\n`:""}
+■ 작성 규칙
+1. 제 글 속의 구체적인 장면, 사물, 대사, 장소를 최대한 살려 주세요. 뻔하고 추상적인 표현(예: 영원히, 운명, 기적)은 줄여 주세요.
+2. 한 줄은 노래로 부르기 좋게 짧게(한국어 기준 대략 8~14자) 써 주세요.
+3. 후렴(Chorus)은 기억하기 쉬운 반복 구절로 만들고, 곡 전체의 중심 메시지를 담아 주세요.
+4. 각 섹션 앞에 Suno 등 AI 작곡 도구가 인식할 수 있도록 영어 대괄호 태그([Verse 1], [Chorus] 등)를 붙여 주세요.
+5. 1절은 상황 소개, 2절은 감정 심화, 브릿지는 전환·깨달음이 드러나도록 구성해 주세요.
+
+■ 출력 형식
+1) 노래 제목 후보 3개
+2) 완성된 가사 (태그 포함)
+3) 어떤 부분을 제 글에서 가져왔는지 짧은 설명 (3줄 이내)`;
+}
+function autoSkeleton(){
+  const L=S.lyrics; const {free}=rawWriting();
+  const all=[...Object.values(L.answers).filter(Boolean), free].join("\n");
+  let sents=all.split(/\n+|(?<=[.!?。…~])\s*|,\s*/).map(s=>s.trim().replace(/[.。]$/,"")).filter(s=>s.length>1);
+  // 긴 문장은 쉼표·조사 기준 반으로
+  sents=sents.flatMap(s=>{ if(s.length<=22) return [s]; const mid=s.indexOf(" ",Math.floor(s.length/2)); return mid>0?[s.slice(0,mid),s.slice(mid+1)]:[s]; });
+  if(!sents.length) return "(먼저 3단계에서 글을 써 주세요)";
+  const hook=L.hook.trim()||(sents.slice().sort((a,b)=>Math.abs(a.length-12)-Math.abs(b.length-12))[0]);
+  const n=sents.length; const a=Math.ceil(n/3);
+  const v1=sents.slice(0,a), v2=sents.slice(a,a*2), br=sents.slice(a*2);
+  const f0=L.feelings[0], t0=L.themes[0]?L.themes[0].split(/[·(]/)[0].trim():"";
+  const chorus=[hook, (f0?f0+josa(f0,"이","가")+" 밀려와":"오늘도 나는 노래해"), hook, (t0?t0+", 그 이름을 불러":"이 마음을 불러")];
+  const blk=(t,arr)=>`[${t}]\n${(arr.length?arr:["(여기에 장면을 더 써 보세요)"]).slice(0,6).join("\n")}`;
+  return [blk("Verse 1",v1),blk("Chorus",chorus),blk("Verse 2",v2),blk("Chorus",chorus),blk("Bridge",br),blk("Final Chorus",chorus),"[Outro]\n"+hook].join("\n\n");
+}
+
+/* =========================================================
+   화면 정의
+   ========================================================= */
+const COMPOSE_STEPS = ["장르","분위기","템포·리듬","악기","보컬","시대·사운드","구조·추가","완성"];
+const LYRIC_STEPS = ["글 스타일","주제·감정","내 이야기 쓰기","노래 설정","작사 변환","완성"];
+
+function render(keep){
+  document.body.className = S.mode==="lyrics"?"mode-lyrics":S.mode==="compose"?"mode-compose":"";
+  $("#topActions").innerHTML = S.mode? `<button class="btn sm ghost" data-act="home">🏠 처음으로</button><button class="btn sm ghost" data-act="reset">↺ 이 과정 초기화</button>`:"";
+  const app=$("#app");
+  if(!S.mode){ app.innerHTML=homeView(); return; }
+  const steps = S.mode==="compose"?COMPOSE_STEPS:LYRIC_STEPS;
+  const body = S.mode==="compose"?composeView(S.step):lyricView(S.step);
+  app.innerHTML = `
+    <div class="stepper">${steps.map((s,i)=>`<button class="stp ${i===S.step?"on":i<S.step?"done":""}" data-goto="${i}"><span class="n">STEP ${i+1}</span>${s}</button>`).join("")}</div>
+    <section class="panel">${body}
+      <div class="nav">
+        <button class="btn" data-act="prev" ${S.step===0?"disabled":""}>← 이전</button>
+        ${S.step<steps.length-1?`<button class="btn primary" data-act="next">다음: ${steps[S.step+1]} →</button>`:`<button class="btn primary" data-act="home">처음 화면으로</button>`}
+      </div>
+    </section>
+    ${S.mode==="compose"&&S.step<steps.length-1?`<div class="live"><span class="lbl">실시간 프롬프트</span><span class="txt" id="livePrompt">${esc(composePrompt())||"선택하면 여기에 프롬프트가 쌓여요"}</span></div>`:""}`;
+  afterRender(keep);
+}
+
+function homeView(){
+  return `
+  <section class="hero">
+    <span class="eyebrow">성인 대상 AI 창작 수업 도구</span>
+    <h1>나의 이야기로 <span class="g1">가사</span>를 쓰고<br>원하는 스타일로 <span class="g2">곡</span>을 만들어요</h1>
+    <p>단계별로 선택하고 쓰기만 하면, AI에게 바로 넣을 수 있는 프롬프트가 완성됩니다.</p>
+  </section>
+  <div class="choices">
+    <button class="choice l" data-mode="lyrics">
+      <div class="ic">✍️</div>
+      <h2>AI 작사</h2>
+      <p>일기·편지·시·인생 회고 등 원하는 글 스타일로 나의 경험을 쓰고, 노래 가사 버전으로 바꿔요.</p>
+      <ol>${LYRIC_STEPS.map((s,i)=>`<li>${i+1}. ${s}</li>`).join("")}</ol>
+      <div class="go" style="color:var(--lyric)">작사 시작하기 →</div>
+    </button>
+    <button class="choice c" data-mode="compose">
+      <div class="ic">🎹</div>
+      <h2>AI 작곡</h2>
+      <p>${Object.values(GENRES).flat().length}개 장르와 분위기·악기·보컬·사운드를 골라 Suno·Udio용 스타일 프롬프트를 만들어요.</p>
+      <ol>${COMPOSE_STEPS.map((s,i)=>`<li>${i+1}. ${s}</li>`).join("")}</ol>
+      <div class="go" style="color:var(--comp)">작곡 시작하기 →</div>
+    </button>
+  </div>
+  <div class="flow">
+    <h3>📌 추천 수업 흐름</h3>
+    <div class="flow-steps"><b>① AI 작사</b>로 내 이야기를 가사로 <span class="arr">→</span> <b>② AI 작곡</b>에서 어울리는 스타일 선택 <span class="arr">→</span> <b>③ Suno</b>에 가사 + 스타일을 붙여넣어 노래 완성 <span class="arr">→</span> <b>④ 발표·감상</b></div>
+    <p style="color:var(--muted);font-size:14px;margin-top:8px">작업 내용은 이 브라우저에 자동 저장됩니다. 작사를 먼저 하면 작곡 완성 화면에 가사가 함께 표시돼요.</p>
+  </div>`;
+}
+
+/* ---------- 작곡 단계 ---------- */
+function composeView(step){
+  const c=S.compose;
+  switch(step){
+  case 0: return `
+    <h2>🎼 어떤 장르의 음악을 만들까요?</h2>
+    <p class="desc">최대 3개까지 고를 수 있어요. 두세 장르를 섞으면 독특한 퓨전 음악이 됩니다. (예: 트로트 + EDM, 국악 퓨전 + 힙합)</p>
+    <input class="search" id="gSearch" placeholder="🔍 장르 검색 (예: 재즈, 시티팝, rock, 국악)">
+    <div class="catnav">${Object.keys(GENRES).map((g,i)=>`<button data-jump="cat${i}">${g.split(" ")[0]}</button>`).join("")}<button data-act="randomGenre">🎲 랜덤 추천</button></div>
+    <div id="gList">${Object.entries(GENRES).map(([cat,list],i)=>`<div class="group" id="cat${i}"><h3>${cat} <span class="cnt">${list.length}개</span></h3><div class="chips" data-max="3">${list.map(x=>chip("compose.genres",x)).join("")}</div></div>`).join("")}</div>
+    <div class="tip"><b>수업 팁</b> · 장르 이름은 영어로 프롬프트에 들어갑니다. 칩 옆의 작은 영어가 실제로 AI에게 전달되는 단어예요.</div>`;
+  case 1: return `
+    <h2>🎨 어떤 분위기의 곡인가요?</h2>
+    <p class="desc">곡의 감정을 2~4개 고르면 가장 좋아요. 반대 감정을 섞으면(예: 슬픈 + 희망찬) 깊이 있는 곡이 됩니다.</p>
+    ${Object.entries(MOODS).map(([k,v])=>chipGroup(k,"compose.moods",v,5)).join("")}`;
+  case 2: return `
+    <h2>🥁 템포와 리듬</h2>
+    <p class="desc">BPM은 1분당 박자 수예요. 발라드 60~80, 팝 90~120, 댄스 120~130, 드럼앤베이스 170 내외.</p>
+    <div class="bpm-box">
+      <label style="display:flex;gap:8px;align-items:center;color:var(--sub);font-size:15px"><input type="checkbox" id="useBpm" ${c.useBpm?"checked":""}> BPM을 프롬프트에 넣기</label>
+      <div class="bpm-val" id="bpmVal">${c.bpm}<small>BPM · ${bpmName(c.bpm)}</small></div>
+      <input type="range" id="bpm" min="50" max="190" value="${c.bpm}">
+      <div class="bpm-marks"><span>50 느림</span><span>90</span><span>120</span><span>150</span><span>190 빠름</span></div>
+      <div class="chips" style="margin-top:12px">${TEMPO_PRESET.map(([k,v])=>`<button class="chip" data-bpm="${v}">${k}</button>`).join("")}</div>
+    </div>
+    ${chipGroup("리듬감 · 박자","compose.feels",FEELS,3)}
+    <div class="group"><h3>조성 (선택)</h3><div class="chips">${KEYS.map(([k,v])=>`<button class="chip ${c.key===v?"sel":""}" data-radio="compose.key" data-val="${esc(v)}">${k}</button>`).join("")}</div></div>`;
+  case 3: return `
+    <h2>🎸 어떤 악기를 쓸까요?</h2>
+    <p class="desc">핵심 악기 2~5개를 고르세요. 너무 많으면 AI가 무시하는 경우가 있어요. 한국 전통 악기와 서양 장르를 섞어 보는 것도 재미있어요.</p>
+    ${Object.entries(INSTRUMENTS).map(([k,v])=>chipGroup(k,"compose.instruments",v,6)).join("")}`;
+  case 4: return `
+    <h2>🎤 보컬은 어떻게 할까요?</h2>
+    <p class="desc">목소리의 성별·음색·창법을 고르세요. '연주곡'을 고르면 가사 없이 음악만 만들어집니다.</p>
+    ${chipGroup("보컬 구성","compose.vocalType",VOCAL_TYPE,2)}
+    ${chipGroup("음색","compose.vocalTone",VOCAL_TONE,3)}
+    ${chipGroup("창법·연출","compose.vocalStyle",VOCAL_STYLE,3)}
+    ${chipGroup("가사 언어","compose.lang",LANGS,1)}`;
+  case 5: return `
+    <h2>📻 시대감과 사운드 질감</h2>
+    <p class="desc">같은 장르라도 '1980년대' + '아날로그 따뜻함'을 고르면 완전히 다른 느낌이 납니다.</p>
+    ${chipGroup("시대감","compose.eras",ERAS,2)}
+    ${chipGroup("프로덕션 · 믹스 질감","compose.production",PRODUCTION,4)}`;
+  case 6: return `
+    <h2>🧩 곡 구조와 추가 요청</h2>
+    <p class="desc">곡의 전개 방식과 원하는 특징을 고르고, 더 하고 싶은 말을 직접 적어도 됩니다.</p>
+    ${chipGroup("곡 전개","compose.structure",STRUCTURE,4)}
+    <div class="row">
+      <div><label class="lb">곡 제목 <small>(선택)</small></label><input class="field" data-model="compose.title" value="${esc(c.title)}" placeholder="예: 엄마의 봄날"></div>
+      <div><label class="lb">추가 스타일 요청 <small>영어 권장</small></label><input class="field" data-model="compose.extra" value="${esc(c.extra)}" placeholder="예: sounds like a rainy night drive"></div>
+    </div>
+    <label class="lb">빼고 싶은 요소 <small>Suno의 More Options → Exclude styles 칸에 넣어요 · 영어 권장</small></label>
+    <input class="field" data-model="compose.exclude" value="${esc(c.exclude)}" placeholder="예: drums, autotune, screaming">
+    <div class="tip"><b>한국어로 쓰고 싶다면?</b> · 추가 요청은 한국어로 써도 되지만, AI 작곡 도구는 영어 스타일 단어를 더 정확히 이해해요. 번역기를 활용해 보세요.</div>`;
+  case 7: return composeResult();
+  }
+}
+function composeResult(){
+  const c=S.compose, p=composePrompt(), ex=composeExplain(), L=S.lyrics;
+  const hasLyrics=L.final.trim().length>0;
+  return `
+    <h2>🎉 작곡 프롬프트 완성!</h2>
+    <p class="desc">아래 내용을 복사해 Suno 커스텀(Custom) 모드의 <b>Styles</b>(스타일) 칸에 붙여넣으세요.</p>
+    ${!c.genres.length?`<div class="tip" style="border-color:var(--warn)">⚠️ 장르를 아직 고르지 않았어요. <button class="btn sm" data-goto="0">장르 고르러 가기</button></div>`:""}
+    <div class="out">
+      <h4>🎵 Styles (스타일 프롬프트) <span class="count ${p.length>1000?"over":""}">${p.length}자 ${p.length>1000?"· 1000자 초과! 항목을 줄여 주세요":p.length>200?"· 길면 핵심 단어 위주로 줄이는 것도 좋아요":""}</span></h4>
+      <pre id="outPrompt">${esc(p)||"(선택한 항목이 없어요)"}</pre>
+      <div class="links"><button class="btn sm primary" data-copy="prompt">📋 스타일 복사</button></div>
+    </div>
+    <div class="group"><h3>🔎 프롬프트 한국어 풀이</h3><div class="ko-explain">${ex.map(([k,v])=>`<span><b>${k}</b>${esc(v)}</span>`).join("")||"<span>선택 항목 없음</span>"}</div></div>
+    ${c.exclude.trim()?`<div class="out" style="margin-top:14px"><h4>🚫 Exclude Styles (제외할 요소)</h4><pre>${esc(c.exclude)}</pre><div class="links"><button class="btn sm" data-copy="exclude">📋 복사</button></div></div>`:""}
+    <div class="two" style="margin-top:16px">
+      <div class="out">
+        <h4>${hasLyrics?"📝 Lyrics (AI 작사에서 만든 가사)":"📝 Lyrics 칸 구조 틀"} <button class="btn sm" data-copy="${hasLyrics?"lyricsFinal":"skeleton"}">📋 복사</button></h4>
+        <pre style="max-height:420px;overflow:auto">${esc(hasLyrics?L.final:composeTagsSkeleton())}</pre>
+        ${hasLyrics?"":`<p style="color:var(--muted);font-size:13px;margin-top:8px">(가사) 자리에 직접 가사를 쓰거나, <a href="#" data-mode="lyrics" style="color:var(--lyric)">AI 작사</a>에서 가사를 만들어 오세요.</p>`}
+      </div>
+      <div class="out">
+        <h4>🏷️ 제목 · 사용 방법</h4>
+        <pre>${esc(c.title||L.title||"(제목 미정)")}</pre>
+        <ol style="margin-top:12px;padding-left:20px;color:var(--sub);font-size:15px;line-height:1.9">
+          <li>Suno 접속 → <b>Create</b> → <b>Custom</b> 모드 선택</li>
+          <li><b>Lyrics</b> 칸에 가사(또는 구조 틀) 붙여넣기</li>
+          <li><b>Styles</b> 칸에 스타일 프롬프트 붙여넣기</li>
+          <li>뺄 요소가 있으면 <b>More Options → Exclude styles</b>에 입력</li>
+          <li>제목 입력 후 <b>Create</b> → 만들어진 2곡 중 마음에 드는 곡 선택</li>
+          <li>마음에 안 들면 분위기·악기를 한두 개만 바꿔 다시!</li>
+        </ol>
+      </div>
+    </div>
+    <div class="links">
+      <a class="btn" href="https://suno.com/create" target="_blank" rel="noopener">🎧 Suno 열기</a>
+      <a class="btn" href="https://www.udio.com/" target="_blank" rel="noopener">🎶 Udio 열기</a>
+      <button class="btn" data-copy="all">📦 전체 패키지 복사</button>
+      <button class="btn" data-act="dlCompose">💾 텍스트 파일 저장</button>
+      <button class="btn" data-act="print">🖨️ 인쇄</button>
+    </div>`;
+}
+
+/* ---------- 작사 단계 ---------- */
+function lyricView(step){
+  const L=S.lyrics, st=lyricStyle();
+  switch(step){
+  case 0: return `
+    <h2>✍️ 어떤 형식으로 글을 써 볼까요?</h2>
+    <p class="desc">처음부터 가사를 쓰기는 어려워요. 익숙한 글 형식으로 먼저 내 이야기를 쓰고, 그 다음에 가사로 바꿉니다.</p>
+    <div class="grid-cards">${WRITE_STYLES.map(w=>`<button class="card-opt ${L.style===w.id?"sel":""}" data-style="${w.id}"><div class="e">${w.e}</div><h4>${w.name}</h4><p>${w.desc}</p></button>`).join("")}</div>`;
+  case 1: return `
+    <h2>💡 무엇에 대한 이야기인가요?</h2>
+    <p class="desc">주제는 1~3개, 감정은 마음에 닿는 만큼 골라 주세요.</p>
+    <div class="group"><h3>주제 <span class="cnt">최대 3개</span></h3><div class="chips" data-max="3">${THEMES.map(([e,k])=>chip("lyrics.themes",[e+" "+k,""],false,k)).join("")}</div></div>
+    <label class="lb">나만의 주제 <small>(선택)</small></label>
+    <input class="field" data-model="lyrics.customTheme" value="${esc(L.customTheme)}" placeholder="예: 30년 다닌 회사를 떠나는 날, 처음 운전면허를 딴 날">
+    <div class="group"><h3>담고 싶은 감정</h3><div class="chips">${FEELINGS.map(f=>chip("lyrics.feelings",[f,""],false)).join("")}</div></div>`;
+  case 2: {
+    if(!st) return `<h2>먼저 글 스타일을 골라 주세요</h2><p class="desc">1단계로 돌아가 글 스타일을 선택하세요.</p><button class="btn primary" data-goto="0">글 스타일 고르기</button>`;
+    const len=writingLen();
+    return `
+    <h2>${st.e} ${st.name}로 내 이야기 쓰기</h2>
+    <p class="desc">질문에 짧게 답하는 것부터 시작하세요. 잘 쓰려고 하지 않아도 돼요. <b>구체적인 장면·사물·대사</b>가 좋은 가사의 재료가 됩니다.</p>
+    <div class="example"><b>예시</b> · ${esc(st.ex)}</div>
+    ${st.qs.map((q,i)=>`<div class="q-card"><div class="q"><span class="qn">Q${i+1}</span>${esc(q)}</div><textarea class="field" data-ans="${i}" placeholder="떠오르는 대로 적어 보세요">${esc(L.answers[i]||"")}</textarea></div>`).join("")}
+    <label class="lb">✏️ 자유롭게 이어 쓰기 <small>질문 답을 바탕으로 ${st.name} 한 편을 완성해 보세요</small></label>
+    <div class="tagbar"><button data-act="mergeAns">⤵ 질문 답변을 아래로 모아 오기</button></div>
+    <textarea class="field" data-model="lyrics.text" id="freeText" style="min-height:220px" placeholder="${esc(st.ex)}">${esc(L.text)}</textarea>
+    <p class="count" id="wcount" style="margin-top:6px">공백 제외 ${len}자 · 300자 이상이면 풍성한 가사가 나와요</p>`; }
+  case 3: return `
+    <h2>🎚️ 어떤 노래로 만들까요?</h2>
+    <p class="desc">글을 가사로 바꿀 때 적용할 방향을 정해요.</p>
+    <div class="group"><h3>노래 장르 <span class="cnt">최대 2개</span></h3><div class="chips" data-max="2">${SONG_GENRES.map(x=>chip("lyrics.genre",x,false)).join("")}</div></div>
+    <div class="group"><h3>화자 시점</h3>${radioChips("lyrics.pov",POVS)}</div>
+    <div class="group"><h3>말투</h3>${radioChips("lyrics.tone",TONES)}</div>
+    <div class="group"><h3>감정 흐름</h3>${radioChips("lyrics.flow",FLOWS)}</div>
+    <div class="group"><h3>운율·리듬 <span class="cnt">최대 2개</span></h3><div class="chips" data-max="2">${RHYMES.map(r=>chip("lyrics.rhyme",[r,""],false)).join("")}</div></div>
+    <div class="group"><h3>영어 사용</h3>${radioChips("lyrics.eng",ENG_MIX)}</div>
+    <div class="group"><h3>곡 길이</h3>${radioChips("lyrics.length",LENGTHS)}</div>
+    <div class="group"><h3>곡 구조 템플릿</h3>${radioChips("lyrics.tpl",Object.keys(STRUCT_TPL))}
+      <p style="color:var(--muted);font-size:14px;margin-top:8px">${STRUCT_TPL[L.tpl].join(" → ")}</p></div>
+    <label class="lb">🎯 후렴에 꼭 넣을 핵심 문장 <small>노래 전체를 대표하는 한 줄</small></label>
+    <input class="field" data-model="lyrics.hook" value="${esc(L.hook)}" placeholder="예: 밥은 먹었니, 그 한마디에">
+    <div class="row">
+      <div><label class="lb">꼭 넣고 싶은 단어·표현</label><input class="field" data-model="lyrics.must" value="${esc(L.must)}" placeholder="예: 자전거, 봄날, 아빠의 손"></div>
+      <div><label class="lb">피하고 싶은 표현</label><input class="field" data-model="lyrics.avoid" value="${esc(L.avoid)}" placeholder="예: 너무 슬픈 결말, 영어 단어"></div>
+    </div>`;
+  case 4: {
+    const p=lyricPrompt();
+    return `
+    <h2>🔄 내 글을 가사로 바꾸기</h2>
+    <p class="desc">① 프롬프트를 복사해 생성형 AI에 붙여넣고 → ② 나온 가사를 아래 칸에 붙여넣어 → ③ 내 말투로 다듬어요.</p>
+    ${writingLen()===0?`<div class="tip" style="border-color:var(--warn)">⚠️ 아직 쓴 글이 없어요. 내 이야기가 들어가야 나만의 가사가 나옵니다. <button class="btn sm" data-goto="2">내 이야기 쓰러 가기</button></div>`:""}
+    <div class="tabs"><button class="${L.convTab==="ai"?"on":""}" data-tab="ai">🤖 AI 변환 프롬프트</button><button class="${L.convTab==="auto"?"on":""}" data-tab="auto">🧱 자동 뼈대 보기</button><button class="${L.convTab==="orig"?"on":""}" data-tab="orig">📄 내가 쓴 원문</button></div>
+    ${L.convTab==="ai"?`<div class="out"><h4>AI에게 보낼 작사 요청 프롬프트 <button class="btn sm primary" data-copy="lyricPrompt">📋 프롬프트 복사</button></h4><pre style="max-height:360px;overflow:auto">${esc(p)}</pre>
+      <div class="links"><a class="btn sm" href="https://claude.ai/new" target="_blank" rel="noopener">Claude 열기</a><a class="btn sm" href="https://chatgpt.com/" target="_blank" rel="noopener">ChatGPT 열기</a><a class="btn sm" href="https://gemini.google.com/" target="_blank" rel="noopener">Gemini 열기</a><a class="btn sm" href="https://wrtn.ai/" target="_blank" rel="noopener">뤼튼 열기</a></div></div>`:""}
+    ${L.convTab==="auto"?`<div class="out"><h4>내 문장을 섹션에 자동 배치한 뼈대 <span><button class="btn sm" data-act="useSkeleton">⤵ 아래 편집칸으로 가져오기</button></span></h4><pre style="max-height:360px;overflow:auto">${esc(autoSkeleton())}</pre></div>
+      <div class="tip"><b>뼈대란?</b> · 내가 쓴 문장을 그대로 1절·후렴·2절에 나눠 놓은 초안이에요. AI 없이 직접 다듬어 보는 연습용으로 좋아요. 줄을 짧게 자르고, 후렴은 반복되게 바꿔 보세요.</div>`:""}
+    ${L.convTab==="orig"?`<div class="out"><h4>내가 쓴 글</h4><pre style="max-height:360px;overflow:auto">${esc([rawWriting().qa,rawWriting().free].filter(Boolean).join("\n\n"))||"(아직 쓴 글이 없어요)"}</pre></div>`:""}
+    <div class="two" style="margin-top:20px;align-items:start">
+      <div>
+        <label class="lb" style="margin-top:0">🎼 가사 편집칸 <small>AI 결과를 붙여넣고 다듬기</small></label>
+        <div class="tagbar">${META_TAGS.map(t=>`<button data-tag="${t}">${t}</button>`).join("")}</div>
+        <textarea class="field" id="finalLyrics" data-model="lyrics.final" style="min-height:420px;font-size:16px" placeholder="[Verse 1]\n여기에 가사를 붙여넣으세요...">${esc(L.final)}</textarea>
+      </div>
+      <div>
+        <label class="lb" style="margin-top:0">📏 줄별 글자 수 <small>14자 넘으면 노란색</small></label>
+        <div class="linecount" id="lineCount">${lineCountHTML(L.final)}</div>
+        <ul class="checklist">
+          <li>소리 내어 불러 보며 어색한 줄 고치기</li>
+          <li>후렴이 2번 이상 반복되나요?</li>
+          <li>내 글의 구체적 장면이 살아 있나요?</li>
+          <li>뻔한 표현을 나만의 단어로 바꿨나요?</li>
+          <li>1절과 2절의 줄 수가 비슷한가요?</li>
+        </ul>
+      </div>
+    </div>`; }
+  case 5: {
+    const has=L.final.trim();
+    return `
+    <h2>🎉 가사 완성!</h2>
+    <p class="desc">제목을 정하고 가사를 저장하세요. 이제 <b>AI 작곡</b>에서 이 가사에 어울리는 곡 스타일을 고를 차례예요.</p>
+    <label class="lb">노래 제목</label>
+    <input class="field" data-model="lyrics.title" value="${esc(L.title)}" placeholder="예: 밥은 먹었니">
+    <div class="summary-tags" style="margin-top:14px">${[lyricStyle()?.name,...L.themes,...L.feelings.slice(0,4),...L.genre.map(g=>KO[g]||g),L.tone].filter(Boolean).map(t=>`<span>${esc(t)}</span>`).join("")}</div>
+    <div class="out" style="margin-top:16px"><h4>📝 ${esc(L.title||"제목 미정")} <button class="btn sm primary" data-copy="lyricsFinal">📋 가사 복사</button></h4>
+      <pre>${has?esc(L.final):"(5단계 편집칸에 가사가 없어요. 이전 단계로 돌아가 가사를 붙여넣어 주세요.)"}</pre></div>
+    <div class="links">
+      <button class="btn primary" data-act="toCompose">🎹 이 가사로 AI 작곡 하러 가기 →</button>
+      <button class="btn" data-act="dlLyrics">💾 텍스트 파일 저장</button>
+      <button class="btn" data-act="print">🖨️ 인쇄</button>
+      <a class="btn" href="https://suno.com/create" target="_blank" rel="noopener">🎧 Suno 열기</a>
+    </div>
+    <div class="tip"><b>다음 단계</b> · 'AI 작곡으로 가기'를 누르면 고른 노래 장르가 작곡 장르에 미리 채워지고, 작곡 완성 화면에 이 가사가 함께 나와 Suno에 한 번에 옮길 수 있어요.</div>`; }
+  }
+}
+function writingLen(){ const {qa,free}=rawWriting(); return (qa.replace(/^- .*$/gm,"")+free).replace(/[\s→]/g,"").length; }
+function lineCountHTML(t){
+  if(!t.trim()) return `<span style="color:var(--muted)">가사를 입력하면 줄마다 글자 수가 보여요</span>`;
+  return t.split("\n").map(l=>{
+    const s=l.trim(); if(!s) return "";
+    if(/^\[.*\]$/.test(s)) return `<div><span class="tg">${esc(s)}</span></div>`;
+    const n=s.replace(/\s/g,"").length;
+    return `<div><span>${esc(s)}</span><span class="n ${n>14?"long":""}">${n}</span></div>`;
+  }).join("");
+}
+
+/* =========================================================
+   이벤트
+   ========================================================= */
+function afterRender(keep){
+  if(!keep) window.scrollTo({top:0,behavior:"smooth"});
+  const gs=$("#gSearch");
+  if(gs) gs.addEventListener("input",()=>{
+    const q=gs.value.trim().toLowerCase();
+    document.querySelectorAll("#gList .group").forEach(g=>{
+      let any=false;
+      g.querySelectorAll(".chip").forEach(ch=>{ const hit=!q||ch.textContent.toLowerCase().includes(q); ch.classList.toggle("hide",!hit); any=any||hit; });
+      g.style.display=any?"":"none";
+    });
+  });
+  const bpm=$("#bpm");
+  if(bpm) bpm.addEventListener("input",()=>{ S.compose.bpm=+bpm.value; save(); updBpm(); });
+  const ub=$("#useBpm"); if(ub) ub.addEventListener("change",()=>{ S.compose.useBpm=ub.checked; save(); updLive(); });
+}
+function updBpm(){ const v=$("#bpmVal"); if(v) v.innerHTML=`${S.compose.bpm}<small>BPM · ${bpmName(S.compose.bpm)}</small>`; const r=$("#bpm"); if(r) r.value=S.compose.bpm; updLive(); }
+function updLive(){ const l=$("#livePrompt"); if(l) l.textContent=composePrompt()||"선택하면 여기에 프롬프트가 쌓여요"; }
+
+document.addEventListener("click",e=>{
+  if(e.target.closest("#homeBtn")){ S.mode=null; save(); render(); return; }
+  const t=e.target.closest("button,a"); if(!t) return;
+  const d=t.dataset;
+  if(d.mode){ e.preventDefault(); S.mode=d.mode; S.step=0; save(); render(); return; }
+  if(d.goto!==undefined){ S.step=+d.goto; save(); render(); return; }
+  if(d.jump){ document.getElementById(d.jump).scrollIntoView({behavior:"smooth",block:"start"}); return; }
+  if(d.style){ S.lyrics.style=d.style; save(); render(true); return; }
+  if(d.tab){ S.lyrics.convTab=d.tab; save(); render(true); return; }
+  if(d.bpm){ S.compose.bpm=+d.bpm; S.compose.useBpm=true; save(); updBpm(); const ub=$("#useBpm"); if(ub) ub.checked=true; return; }
+  if(d.radio){ setPath(d.radio,d.val); const box=t.parentElement; box.querySelectorAll(".chip").forEach(c=>c.classList.toggle("sel",c===t)); if(d.radio==="lyrics.tpl") render(true); updLive(); return; }
+  if(d.path){
+    const arr=getPath(d.path); const i=arr.indexOf(d.val); const max=+(t.closest(".chips")?.dataset.max||0);
+    if(i>=0){ arr.splice(i,1); t.classList.remove("sel"); }
+    else{
+      if(d.path==="compose.vocalType"&&d.val==="instrumental"){ arr.length=0; t.closest(".chips").querySelectorAll(".chip").forEach(c=>c.classList.remove("sel")); }
+      else if(d.path==="compose.vocalType"&&arr.includes("instrumental")){ arr.splice(arr.indexOf("instrumental"),1); t.closest(".chips").querySelector('[data-val="instrumental"]')?.classList.remove("sel"); }
+      if(max && arr.length>=max){ toast(`최대 ${max}개까지 고를 수 있어요`); return; }
+      arr.push(d.val); t.classList.add("sel");
+    }
+    save(); updLive(); return;
+  }
+  if(d.tag){ insertAtCursor($("#finalLyrics"), (t.dataset.tag)+"\n"); return; }
+  if(d.copy){
+    const L=S.lyrics,c=S.compose;
+    const map={prompt:composePrompt(),exclude:c.exclude,skeleton:composeTagsSkeleton(),lyricsFinal:L.final,lyricPrompt:lyricPrompt(),
+      all:`[제목]\n${c.title||L.title||""}\n\n[Styles]\n${composePrompt()}\n${c.exclude?`\n[Exclude Styles]\n${c.exclude}\n`:""}\n[Lyrics]\n${L.final.trim()||composeTagsSkeleton()}\n\nBy Mindstream LAB Awesome JWY`};
+    copy(map[d.copy]||""); return;
+  }
+  switch(d.act){
+    case "home": S.mode=null; save(); render(); break;
+    case "prev": if(S.step>0){S.step--; save(); render();} break;
+    case "next": S.step++; save(); render(); break;
+    case "reset":
+      if(confirm(`${S.mode==="compose"?"AI 작곡":"AI 작사"} 과정에서 입력한 내용을 모두 지울까요?`)){ const b=DEFAULT(); S[S.mode]=b[S.mode]; S.step=0; save(); render(); toast("초기화했어요"); }
+      break;
+    case "randomGenre": {
+      const all=Object.values(GENRES).flat(); const pick=()=>all[Math.floor(Math.random()*all.length)][1];
+      S.compose.genres=[...new Set([pick(),pick()])]; save(); render(true);
+      toast("🎲 "+S.compose.genres.map(g=>KO[g]).join(" + ")); break; }
+    case "mergeAns": {
+      const st=lyricStyle(); const ans=st.qs.map((q,i)=>(S.lyrics.answers[i]||"").trim()).filter(Boolean).join("\n");
+      if(!ans){ toast("먼저 질문에 답해 주세요"); break; }
+      S.lyrics.text=(S.lyrics.text.trim()?S.lyrics.text.trim()+"\n\n":"")+ans; save(); render(true); toast("답변을 모아 왔어요. 이어서 다듬어 보세요"); break; }
+    case "useSkeleton":
+      if(S.lyrics.final.trim() && !confirm("편집칸의 기존 가사를 뼈대로 바꿀까요?")) break;
+      S.lyrics.final=autoSkeleton(); save(); render(true); toast("편집칸으로 가져왔어요"); break;
+    case "toCompose":
+      if(S.lyrics.genre.length && !S.compose.genres.length) S.compose.genres=S.lyrics.genre.slice(0,3);
+      if(S.lyrics.title && !S.compose.title) S.compose.title=S.lyrics.title;
+      if(!S.compose.lang.length) S.compose.lang=[S.lyrics.eng.startsWith("전체 영어")?"english lyrics":S.lyrics.eng.startsWith("영어 없이")?"korean lyrics":"korean and english lyrics"];
+      S.mode="compose"; S.step=0; save(); render(); toast("가사 정보를 가지고 작곡으로 이동했어요"); break;
+    case "dlLyrics": download(`${S.lyrics.title||"나의 가사"}.txt`, `${S.lyrics.title||"제목 미정"}\n\n${S.lyrics.final}\n\n---\n[원문]\n${[rawWriting().qa,rawWriting().free].filter(Boolean).join("\n\n")}\n\nBy Mindstream LAB Awesome JWY`); break;
+    case "dlCompose": download(`${S.compose.title||S.lyrics.title||"나의 곡"}_프롬프트.txt`, `[제목]\n${S.compose.title||S.lyrics.title||""}\n\n[Styles]\n${composePrompt()}\n\n[한국어 풀이]\n${composeExplain().map(([k,v])=>`${k}: ${v}`).join("\n")}\n\n[Exclude Styles]\n${S.compose.exclude}\n\n[Lyrics]\n${S.lyrics.final.trim()||composeTagsSkeleton()}\n\nBy Mindstream LAB Awesome JWY`); break;
+    case "print": window.print(); break;
+  }
+});
+
+document.addEventListener("input",e=>{
+  const t=e.target;
+  if(t.dataset.model){ setPath(t.dataset.model,t.value);
+    if(t.id==="finalLyrics"){ const lc=$("#lineCount"); if(lc) lc.innerHTML=lineCountHTML(t.value); }
+    if(t.dataset.model.startsWith("compose")) updLive();
+  }
+  if(t.dataset.ans!==undefined){ S.lyrics.answers[t.dataset.ans]=t.value; save(); }
+  if(t.dataset.ans!==undefined||t.id==="freeText"){ const w=$("#wcount"); if(w){ const len=writingLen(); w.textContent=`공백 제외 ${len}자 · 300자 이상이면 풍성한 가사가 나와요`; } }
+});
+
+function insertAtCursor(ta,text){
+  if(!ta) return; const s=ta.selectionStart,en=ta.selectionEnd; const before=ta.value.slice(0,s);
+  const pre = before && !before.endsWith("\n") ? "\n\n" : (before.endsWith("\n")&&!before.endsWith("\n\n")&&before?"\n":"");
+  ta.value=before+pre+text+ta.value.slice(en); const pos=(before+pre+text).length; ta.focus(); ta.setSelectionRange(pos,pos);
+  ta.dispatchEvent(new Event("input",{bubbles:true}));
+}
+
+render();
+</script>
+</body>
+</html>
