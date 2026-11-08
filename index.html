@@ -205,8 +205,8 @@ body.mode-compose{--accent:var(--comp);--accent2:var(--comp2)}
 </div>
 <div class="toast" id="toast"></div>
 <div class="player" id="player" hidden>
-  <div class="ph"><span id="playerTitle">샘플 듣기</span><a id="playerLink" href="#" target="_blank" rel="noopener">Suno에서 열기 ↗</a><button data-act="closePlayer" aria-label="닫기">✕</button></div>
-  <iframe id="playerFrame" title="Suno 샘플 재생기" allow="autoplay; encrypted-media"></iframe>
+  <div class="ph"><span id="playerTitle">샘플 듣기</span><a id="playerLink" href="#" target="_blank" rel="noopener">원곡 페이지 열기 ↗</a><button data-act="closePlayer" aria-label="닫기">✕</button></div>
+  <iframe id="playerFrame" title="샘플 재생기" allow="autoplay; encrypted-media"></iframe>
   <div class="pf">▶ 버튼을 눌러 재생하세요 · 장르 느낌을 알 수 있게 앞부분 30초 정도만 들어 보세요</div>
 </div>
 <script src="samples.js"></script>
@@ -383,7 +383,7 @@ const DURATIONS = {
   "30초":{e:"⏱️",desc:"광고 징글·쇼츠·인트로용",sections:[["Verse",2],["Chorus",4]],max:6,chars:"8~12자",style:"short jingle, about 30 seconds, very short intro",focus:"상황 설명은 빼고, 첫 줄부터 핵심 메시지와 후크가 바로 나오게"},
   "1분":{e:"⏰",desc:"숏폼·축하 영상·수업 발표용",sections:[["Verse",4],["Chorus",4],["Outro",2]],max:10,chars:"8~14자",style:"short song, about 1 minute, short intro",focus:"가장 중요한 장면 1~2개만 골라 압축하고, 후렴에 감정을 모으게"},
   "2분":{e:"🕑",desc:"짧은 완곡 · 1절+2절",sections:[["Verse 1",4],["Chorus",4],["Verse 2",4],["Chorus",4],["Outro",2]],max:18,chars:"8~14자",style:"short song, about 2 minutes",focus:"1절은 장면, 2절은 감정 심화, 후렴은 두 번 똑같이 반복되게"},
-  "3분 이상 (정규곡)":{e:"🎼",desc:"구조 템플릿을 직접 선택",sections:null,max:null,chars:"8~14자",style:"",focus:""}
+  "3분 이상 (정규곡)":{e:"🎼",desc:"구조 템플릿을 직접 선택",sections:null,max:null,min:20,chars:"8~14자",style:"",focus:""}
 };
 const DUR_KEYS = Object.keys(DURATIONS);
 const SHORT_DURS = ["30초","1분","2분"];
@@ -433,7 +433,6 @@ function copy(text){
   if(navigator.clipboard && window.isSecureContext){ navigator.clipboard.writeText(text).then(done).catch(()=>fallback()); } else fallback();
   function fallback(){ const ta=document.createElement("textarea"); ta.value=text; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove(); done(); }
 }
-function download(name,text){ name=name.replace(/[\\/:*?"<>|]/g,"_"); const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([text],{type:"text/plain;charset=utf-8"})); a.download=name; a.click(); }
 function getPath(p){ return p.split(".").reduce((o,k)=>o[k],S); }
 const SAMPLES = window.SUNO_SAMPLES || {};
 function sampleId(en){ return String(en).toLowerCase().replace(/&/g,"and").replace(/'/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,""); }
@@ -515,6 +514,8 @@ function composeTagsSkeleton(){
    작사 프롬프트 생성
    ========================================================= */
 function josa(w,a,b){ const c=w.charCodeAt(w.length-1); if(c<0xAC00||c>0xD7A3) return a; return (c-0xAC00)%28?a:b; }
+/* '로/으로': 받침 없거나 ㄹ 받침이면 '로' (끝의 괄호 등은 건너뜀) */
+function ro(w){ const s=w.replace(/[^가-힣]+$/,""); const j=(s.charCodeAt(s.length-1)-0xAC00)%28; return (!s||j===0||j===8)?"로":"으로"; }
 function lyricStyle(){ return WRITE_STYLES.find(w=>w.id===S.lyrics.style); }
 function rawWriting(){
   const L=S.lyrics, st=lyricStyle(); const lines=[];
@@ -562,7 +563,7 @@ ${lenBlock}■ 작성 규칙
 1. 제 글 속의 구체적인 장면, 사물, 대사, 장소를 최대한 살려 주세요. 뻔하고 추상적인 표현(예: 영원히, 운명, 기적)은 줄여 주세요.
 2. 한 줄은 노래로 부르기 좋게 짧게(한국어 기준 대략 ${D.chars}) 써 주세요.
 3. 후렴(Chorus)은 기억하기 쉬운 반복 구절로 만들고, 곡 전체의 중심 메시지를 담아 주세요.
-4. 각 섹션 앞에 Suno 등 AI 작곡 도구가 인식할 수 있도록 영어 대괄호 태그([Verse 1], [Chorus] 등)를 붙여 주세요.
+4. 각 섹션 앞에 AI 작곡 도구가 인식할 수 있도록 영어 대괄호 태그([Verse 1], [Chorus] 등)를 붙여 주세요.
 5. ${short?"짧은 곡이므로 긴 설명보다 감정과 반복되는 후크에 집중해 주세요.":"1절은 상황 소개, 2절은 감정 심화, 브릿지는 전환·깨달음이 드러나도록 구성해 주세요."}
 
 ■ 출력 형식
@@ -583,7 +584,7 @@ ${struct}
 - 한 줄은 ${D.chars}로 짧게.
 - 원래 가사에서 가장 좋은 표현과 후렴 핵심 문장은 살리고, 설명적인 줄부터 지워 주세요.
 - 새로운 내용을 지어내지 말고 원래 가사 안에서 고르고 다듬어 주세요.
-- Suno가 인식하도록 영어 대괄호 태그를 유지하고, 끝에 [End]를 붙여 주세요.
+- AI 작곡 도구가 인식하도록 영어 대괄호 태그를 유지하고, 끝에 [End]를 붙여 주세요.
 - 마지막에 "총 ○줄"이라고 줄 수를 적어 주세요.
 
 ■ 원래 가사
@@ -599,8 +600,8 @@ function autoSkeleton(){
   const hook=L.hook.trim()||(sents.slice().sort((a,b)=>Math.abs(a.length-12)-Math.abs(b.length-12))[0]);
   const n=sents.length; const a=Math.ceil(n/3);
   const v1=sents.slice(0,a), v2=sents.slice(a,a*2), br=sents.slice(a*2);
-  const f0=L.feelings[0], t0=L.themes[0]?L.themes[0].split(/[·(]/)[0].trim():"";
-  const chorus=[hook, (f0?f0+josa(f0,"이","가")+" 밀려와":"오늘도 나는 노래해"), hook, (t0?t0+", 그 이름을 불러":"이 마음을 불러")];
+  const f0=L.feelings[0], yo=L.tone.startsWith("존댓말")?"요":"";
+  const chorus=[hook, (f0?f0+josa(f0,"이","가")+" 밀려와"+yo:"오늘도 나는 노래해"+yo), hook, "이 마음을 노래해"+yo];
   const D=DURATIONS[L.length];
   if(D&&D.sections){
     let k=0; const take=c=>{ const r=sents.slice(k,k+c); k+=c; while(r.length<c) r.push("(한 줄 더 써 보세요)"); return r; };
@@ -656,14 +657,14 @@ function homeView(){
     <button class="choice c" data-mode="compose">
       <div class="ic">🎹</div>
       <h2>AI 작곡</h2>
-      <p>${Object.values(GENRES).flat().length}개 장르와 분위기·악기·보컬·사운드를 골라 Suno·Udio용 스타일 프롬프트를 만들어요.</p>
+      <p>${Object.values(GENRES).flat().length}개 장르와 분위기·악기·보컬·사운드를 골라 AI 작곡 도구에 넣을 스타일 프롬프트를 만들어요.</p>
       <ol>${COMPOSE_STEPS.map((s,i)=>`<li>${i+1}. ${s}</li>`).join("")}</ol>
       <div class="go" style="color:var(--comp)">작곡 시작하기 →</div>
     </button>
   </div>
   <div class="flow">
     <h3>📌 추천 수업 흐름</h3>
-    <div class="flow-steps"><b>① AI 작사</b>로 내 이야기를 가사로 <span class="arr">→</span> <b>② AI 작곡</b>에서 어울리는 스타일 선택 <span class="arr">→</span> <b>③ Suno</b>에 가사 + 스타일을 붙여넣어 노래 완성 <span class="arr">→</span> <b>④ 발표·감상</b></div>
+    <div class="flow-steps"><b>① AI 작사</b>로 내 이야기를 가사로 <span class="arr">→</span> <b>② AI 작곡</b>에서 어울리는 스타일 선택 <span class="arr">→</span> <b>③ AI 작곡 도구</b>에 가사 + 스타일을 붙여넣어 노래 완성 <span class="arr">→</span> <b>④ 발표·감상</b></div>
     <p style="color:var(--muted);font-size:14px;margin-top:8px">작업 내용은 이 브라우저에 자동 저장됩니다. 작사를 먼저 하면 작곡 완성 화면에 가사가 함께 표시돼요.</p>
   </div>`;
 }
@@ -676,7 +677,7 @@ function composeView(step){
     <h2>🎼 어떤 장르의 음악을 만들까요?</h2>
     <p class="desc">수업에서 많이 쓰는 <b>추천 장르 ${CORE_GENRES.size}개</b>를 먼저 보여 드려요. 더 많은 장르는 아래 '전체 장르 보기'를 누르거나 검색하세요.<br>최대 3개까지 고를 수 있지만, <b>중심 장르 1개 + 섞을 장르 1개</b>일 때 AI가 가장 잘 반영해요. (예: 트로트 + EDM)</p>
     <input class="search" id="gSearch" placeholder="🔍 장르 검색 (예: 재즈, 시티팝, rock, 국악)">
-    ${sampleCount(Object.values(GENRES).flat())?`<div class="sample-note">🎧 <b style="color:var(--accent)">▶</b> 표시가 있는 장르는 Suno로 만든 샘플을 들어볼 수 있어요 (${sampleCount(Object.values(GENRES).flat())}개)</div>`:""}
+    ${sampleCount(Object.values(GENRES).flat())?`<div class="sample-note">🎧 <b style="color:var(--accent)">▶</b> 표시가 있는 장르는 AI로 만든 샘플을 들어볼 수 있어요 (${sampleCount(Object.values(GENRES).flat())}개)</div>`:""}
     <div id="gWrap" class="${c.showAll?"":"collapsed"}">
     <div class="catnav">${Object.keys(GENRES).map((g,i)=>`<button data-jump="cat${i}" class="${GENRES[g].some(isShown)?"":"more"}">${g.split(" ")[0]}</button>`).join("")}<button data-act="randomGenre">🎲 랜덤 추천</button></div>
     <div id="gList">${Object.entries(GENRES).map(([cat,list],i)=>`<div class="group ${list.some(isShown)?"":"more"}" id="cat${i}"><h3>${cat} <span class="cnt">${c.showAll?list.length+"개":`추천 ${list.filter(isShown).length}개 / 전체 ${list.length}개`}</span></h3><div class="chips" data-max="3">${list.map(x=>{ const h=chip("compose.genres",x); return isShown(x)?h:h.replace(/^<(span|button) class="/,'<$1 class="more '); }).join("")}</div></div>`).join("")}</div>
@@ -719,13 +720,13 @@ function composeView(step){
     <h2>🧩 곡 구조와 추가 요청</h2>
     <p class="desc">곡의 전개 방식과 원하는 특징을 고르고, 더 하고 싶은 말을 직접 적어도 됩니다.</p>
     <div class="group"><h3>⏱️ 곡 길이</h3>${radioChips("compose.duration",["제한 없음",...SHORT_DURS])}
-      ${DURATIONS[c.duration]?`<div class="tip"><b>${esc(c.duration)} 곡 만들기</b> · Suno는 시간을 정확히 지키지 않아요. 가장 확실한 방법은 <b>가사를 ${DURATIONS[c.duration].max}줄 이내로 줄이고 마지막에 [End] 태그</b>를 넣는 것이에요. 길게 나오면 다시 생성하거나 앞부분만 잘라 쓰세요.</div>`:""}</div>
+      ${DURATIONS[c.duration]?`<div class="tip"><b>${esc(c.duration)} 곡 만들기</b> · AI 작곡 도구는 시간을 정확히 지키지 않아요. 가장 확실한 방법은 <b>가사를 ${DURATIONS[c.duration].max}줄 이내로 줄이고 마지막에 [End] 태그</b>를 넣는 것이에요. 길게 나오면 다시 생성하거나 앞부분만 잘라 쓰세요.</div>`:""}</div>
     ${chipGroup("곡 전개","compose.structure",STRUCTURE,4)}
     <div class="row">
       <div><label class="lb">곡 제목 <small>(선택)</small></label><input class="field" data-model="compose.title" value="${esc(c.title)}" placeholder="예: 엄마의 봄날"></div>
       <div><label class="lb">추가 스타일 요청 <small>영어 권장</small></label><input class="field" data-model="compose.extra" value="${esc(c.extra)}" placeholder="예: sounds like a rainy night drive"></div>
     </div>
-    <label class="lb">빼고 싶은 요소 <small>Suno의 More Options → Exclude styles 칸에 넣어요 · 영어 권장</small></label>
+    <label class="lb">빼고 싶은 요소 <small>AI 작곡 도구에 '제외할 스타일' 칸이 있으면 넣어요 · 영어 권장</small></label>
     <input class="field" data-model="compose.exclude" value="${esc(c.exclude)}" placeholder="예: drums, autotune, screaming">
     <div class="tip"><b>한국어로 쓰고 싶다면?</b> · 추가 요청은 한국어로 써도 되지만, AI 작곡 도구는 영어 스타일 단어를 더 정확히 이해해요. 번역기를 활용해 보세요.</div>`;
   case 7: return composeResult();
@@ -736,19 +737,19 @@ function composeResult(){
   const hasLyrics=L.final.trim().length>0;
   return `
     <h2>🎉 작곡 프롬프트 완성!</h2>
-    <p class="desc">아래 내용을 복사해 Suno 커스텀(Custom) 모드의 <b>Styles</b>(스타일) 칸에 붙여넣으세요.</p>
+    <p class="desc">아래 내용을 복사해 사용하는 AI 작곡 도구의 <b>스타일(Style)</b> 칸에 붙여넣으세요.</p>
     ${!c.genres.length?`<div class="tip" style="border-color:var(--warn)">⚠️ 장르를 아직 고르지 않았어요. <button class="btn sm" data-goto="0">장르 고르러 가기</button></div>`:""}
     <div class="out">
-      <h4>🎵 Styles (스타일 프롬프트) <span class="count ${p.length>1000?"over":""}">${p.length}자 ${p.length>1000?"· 1000자 초과! 항목을 줄여 주세요":p.length>200?"· 길면 핵심 단어 위주로 줄이는 것도 좋아요":""}</span></h4>
+      <h4>🎵 스타일 프롬프트 <span class="count ${p.length>1000?"over":""}">${p.length}자 ${p.length>1000?"· 1000자 초과! 항목을 줄여 주세요":p.length>200?"· 길면 핵심 단어 위주로 줄이는 것도 좋아요":""}</span></h4>
       <pre id="outPrompt">${esc(p)||"(선택한 항목이 없어요)"}</pre>
       <div class="links"><button class="btn sm primary" data-copy="prompt">📋 스타일 복사</button></div>
     </div>
     ${hasLyrics&&DURATIONS[c.duration]&&lyricLineCount(L.final)>DURATIONS[c.duration].max?`<div class="tip" style="border-color:var(--warn)">⚠️ ${esc(c.duration)} 곡인데 가사가 ${lyricLineCount(L.final)}줄이에요(목표 ${DURATIONS[c.duration].max}줄 이내). 가사가 길면 곡도 길어집니다. <button class="btn sm" data-mode="lyrics" data-step="4">AI 작사에서 줄이기</button></div>`:""}
     <div class="group"><h3>🔎 프롬프트 한국어 풀이</h3><div class="ko-explain">${ex.map(([k,v])=>`<span><b>${k}</b>${esc(v)}</span>`).join("")||"<span>선택 항목 없음</span>"}</div></div>
-    ${c.exclude.trim()?`<div class="out" style="margin-top:14px"><h4>🚫 Exclude Styles (제외할 요소)</h4><pre>${esc(c.exclude)}</pre><div class="links"><button class="btn sm" data-copy="exclude">📋 복사</button></div></div>`:""}
+    ${c.exclude.trim()?`<div class="out" style="margin-top:14px"><h4>🚫 제외할 요소</h4><pre>${esc(c.exclude)}</pre><div class="links"><button class="btn sm" data-copy="exclude">📋 복사</button></div></div>`:""}
     <div class="two" style="margin-top:16px">
       <div class="out">
-        <h4>${hasLyrics?"📝 Lyrics (AI 작사에서 만든 가사)":"📝 Lyrics 칸 구조 틀"} <button class="btn sm" data-copy="${hasLyrics?"lyricsFinal":"skeleton"}">📋 복사</button></h4>
+        <h4>${hasLyrics?"📝 가사 (AI 작사에서 만든 가사)":"📝 가사 칸 구조 틀"} <button class="btn sm" data-copy="${hasLyrics?"lyricsFinal":"skeleton"}">📋 복사</button></h4>
         <pre style="max-height:420px;overflow:auto">${esc(hasLyrics?L.final:composeTagsSkeleton())}</pre>
         ${hasLyrics?"":`<p style="color:var(--muted);font-size:13px;margin-top:8px">(가사) 자리에 직접 가사를 쓰거나, <a href="#" data-mode="lyrics" style="color:var(--lyric)">AI 작사</a>에서 가사를 만들어 오세요.</p>`}
       </div>
@@ -756,21 +757,17 @@ function composeResult(){
         <h4>🏷️ 제목 · 사용 방법</h4>
         <pre>${esc(c.title||L.title||"(제목 미정)")}</pre>
         <ol style="margin-top:12px;padding-left:20px;color:var(--sub);font-size:15px;line-height:1.9">
-          <li>Suno 접속 → <b>Create</b> → <b>Custom</b> 모드 선택</li>
-          <li><b>Lyrics</b> 칸에 가사(또는 구조 틀) 붙여넣기</li>
-          <li><b>Styles</b> 칸에 스타일 프롬프트 붙여넣기</li>
-          <li>뺄 요소가 있으면 <b>More Options → Exclude styles</b>에 입력</li>
-          <li>제목 입력 후 <b>Create</b> → 만들어진 2곡 중 마음에 드는 곡 선택</li>
+          <li>사용하는 AI 작곡 도구에서 가사·스타일을 직접 넣는 모드 선택</li>
+          <li><b>가사</b> 칸에 가사(또는 구조 틀) 붙여넣기</li>
+          <li><b>스타일</b> 칸에 스타일 프롬프트 붙여넣기</li>
+          <li>제외할 스타일 칸이 있으면 뺄 요소 입력</li>
+          <li>제목 입력 후 생성 → 마음에 드는 곡 선택</li>
           <li>마음에 안 들면 분위기·악기를 한두 개만 바꿔 다시!</li>
         </ol>
       </div>
     </div>
     <div class="links">
-      <a class="btn" href="https://suno.com/create" target="_blank" rel="noopener">🎧 Suno 열기</a>
-      <a class="btn" href="https://www.udio.com/" target="_blank" rel="noopener">🎶 Udio 열기</a>
       <button class="btn" data-copy="all">📦 전체 패키지 복사</button>
-      <button class="btn" data-act="dlCompose">💾 텍스트 파일 저장</button>
-      <button class="btn" data-act="print">🖨️ 인쇄</button>
     </div>`;
 }
 
@@ -793,7 +790,7 @@ function lyricView(step){
     if(!st) return `<h2>먼저 글 스타일을 골라 주세요</h2><p class="desc">1단계로 돌아가 글 스타일을 선택하세요.</p><button class="btn primary" data-goto="0">글 스타일 고르기</button>`;
     const len=writingLen();
     return `
-    <h2>${st.e} ${st.name}로 내 이야기 쓰기</h2>
+    <h2>${st.e} ${st.name}${ro(st.name)} 내 이야기 쓰기</h2>
     <p class="desc">질문에 짧게 답하는 것부터 시작하세요. 잘 쓰려고 하지 않아도 돼요. <b>구체적인 장면·사물·대사</b>가 좋은 가사의 재료가 됩니다.</p>
     <div class="example"><b>예시</b> · ${esc(st.ex)}</div>
     ${st.qs.map((q,i)=>`<div class="q-card"><div class="q"><span class="qn">Q${i+1}</span>${esc(q)}</div><textarea class="field" data-ans="${i}" placeholder="떠오르는 대로 적어 보세요">${esc(L.answers[i]||"")}</textarea></div>`).join("")}
@@ -863,22 +860,19 @@ function lyricView(step){
     <input class="field" data-model="lyrics.title" value="${esc(L.title)}" placeholder="예: 밥은 먹었니">
     ${has&&DURATIONS[L.length].max&&lyricLineCount(L.final)>DURATIONS[L.length].max?`<div class="tip" style="border-color:var(--warn)">⚠️ ${esc(L.length)}용 가사는 ${DURATIONS[L.length].max}줄 이내인데 지금 ${lyricLineCount(L.final)}줄이에요. <button class="btn sm" data-copy="shorten">✂️ 길이 맞추기 프롬프트 복사</button> <button class="btn sm" data-goto="4">편집칸으로</button></div>`:""}
     <div class="summary-tags" style="margin-top:14px">${[lyricStyle()?.name,L.length,...L.themes,...L.feelings.slice(0,4),...L.genre.map(g=>KO[g]||g),L.tone].filter(Boolean).map(t=>`<span>${esc(t)}</span>`).join("")}</div>
-    <div class="out" style="margin-top:16px"><h4>📝 ${esc(L.title||"제목 미정")} <button class="btn sm primary" data-copy="lyricsFinal">📋 가사 복사</button></h4>
+    <div class="out" style="margin-top:16px"><h4>📝 <span id="lyTitle">${esc(L.title||"제목 미정")}</span> <button class="btn sm primary" data-copy="lyricsFinal">📋 가사 복사</button></h4>
       <pre>${has?esc(L.final):"(5단계 편집칸에 가사가 없어요. 이전 단계로 돌아가 가사를 붙여넣어 주세요.)"}</pre></div>
     <div class="links">
       <button class="btn primary" data-act="toCompose">🎹 이 가사로 AI 작곡 하러 가기 →</button>
-      <button class="btn" data-act="dlLyrics">💾 텍스트 파일 저장</button>
-      <button class="btn" data-act="print">🖨️ 인쇄</button>
-      <a class="btn" href="https://suno.com/create" target="_blank" rel="noopener">🎧 Suno 열기</a>
     </div>
-    <div class="tip"><b>다음 단계</b> · 'AI 작곡으로 가기'를 누르면 고른 노래 장르가 작곡 장르에 미리 채워지고, 작곡 완성 화면에 이 가사가 함께 나와 Suno에 한 번에 옮길 수 있어요.</div>`; }
+    <div class="tip"><b>다음 단계</b> · 'AI 작곡으로 가기'를 누르면 고른 노래 장르가 작곡 장르에 미리 채워지고, 작곡 완성 화면에 이 가사가 함께 나와 AI 작곡 도구에 한 번에 옮길 수 있어요.</div>`; }
   }
 }
 function lenStatusHTML(){
-  const L=S.lyrics, D=DURATIONS[L.length]||DURATIONS["1분"], n=lyricLineCount(L.final), max=D.max||40, over=n>max;
-  return `<div class="out" style="padding:14px;border-color:${over?"var(--warn)":"var(--line)"}">
-    <h4 style="margin-bottom:6px">⏱️ ${esc(L.length)} 목표 <span class="count ${over?"over":""}" style="font-size:15px;font-weight:800">현재 ${n}줄 / ${D.max?D.max+"줄 이내":"40줄 이내"}</span></h4>
-    <p style="font-size:14px;color:${over?"var(--warn)":"var(--sub)"}">${!n?"가사를 넣으면 줄 수를 세어 드려요 (태그 줄은 빼고 셉니다)":over?`⚠️ ${n-max}줄이 많아요! 아래 프롬프트로 길이를 맞추세요.`:"✅ 길이가 알맞아요"}</p>
+  const L=S.lyrics, D=DURATIONS[L.length]||DURATIONS["1분"], n=lyricLineCount(L.final), max=D.max||40, over=n>max, under=!!n&&n<(D.min||0), bad=over||under;
+  return `<div class="out" style="padding:14px;border-color:${bad?"var(--warn)":"var(--line)"}">
+    <h4 style="margin-bottom:6px">⏱️ ${esc(L.length)} 목표 <span class="count ${bad?"over":""}" style="font-size:15px;font-weight:800">현재 ${n}줄 / ${D.max?D.max+"줄 이내":`${D.min}~40줄`}</span></h4>
+    <p style="font-size:14px;color:${bad?"var(--warn)":"var(--sub)"}">${!n?"가사를 넣으면 줄 수를 세어 드려요 (태그 줄은 빼고 셉니다)":over?`⚠️ ${n-max}줄이 많아요! 아래 프롬프트로 길이를 맞추세요.`:under?`⚠️ 정규곡으로는 ${D.min-n}줄이 부족해요. 2절이나 브릿지를 더 써 보세요.`:"✅ 길이가 알맞아요"}</p>
     <div class="links" style="margin-top:8px"><button class="btn sm ${over?"primary":""}" data-copy="shorten">✂️ 길이 맞추기 프롬프트 복사</button><button class="btn sm" data-goto="3">길이 바꾸기</button></div></div>`;
 }
 function writingLen(){ const {qa,free}=rawWriting(); return (qa.replace(/^- .*$/gm,"")+free).replace(/[\s→]/g,"").length; }
@@ -895,6 +889,8 @@ function lineCountHTML(t){
 /* =========================================================
    이벤트
    ========================================================= */
+/* 장르 검색 별칭: 이름에 검색어가 없는 같은 계열 장르도 함께 보여 줌 */
+const SEARCH_ALIAS = {"국악":["판소리","민요","아리랑"]};
 function afterRender(keep){
   if(!keep) window.scrollTo({top:0,behavior:"smooth"});
   const gs=$("#gSearch");
@@ -903,7 +899,7 @@ function afterRender(keep){
     $("#gWrap").classList.toggle("collapsed", !q && !S.compose.showAll);
     document.querySelectorAll("#gList .group").forEach(g=>{
       let any=false;
-      g.querySelectorAll(".chip").forEach(ch=>{ const hit=!q||ch.textContent.toLowerCase().includes(q); (ch.closest(".cw")||ch).classList.toggle("hide",!hit); any=any||hit; });
+      g.querySelectorAll(".chip").forEach(ch=>{ const tx=ch.textContent.toLowerCase(); const hit=!q||tx.includes(q)||(SEARCH_ALIAS[q]||[]).some(a=>tx.includes(a)); (ch.closest(".cw")||ch).classList.toggle("hide",!hit); any=any||hit; });
       g.style.display=any?"":"none";
     });
   });
@@ -942,7 +938,7 @@ document.addEventListener("click",e=>{
   if(d.copy){
     const L=S.lyrics,c=S.compose;
     const map={shorten:shortenPrompt(),prompt:composePrompt(),exclude:c.exclude,skeleton:composeTagsSkeleton(),lyricsFinal:L.final,lyricPrompt:lyricPrompt(),
-      all:`[제목]\n${c.title||L.title||""}\n\n[Styles]\n${composePrompt()}\n${c.exclude?`\n[Exclude Styles]\n${c.exclude}\n`:""}\n[Lyrics]\n${L.final.trim()||composeTagsSkeleton()}\n\nBy Mindstream LAB Awesome JWY`};
+      all:`[제목]\n${c.title||L.title||""}\n\n[스타일]\n${composePrompt()}\n${c.exclude?`\n[제외할 요소]\n${c.exclude}\n`:""}\n[가사]\n${L.final.trim()||composeTagsSkeleton()}\n\nBy Mindstream LAB Awesome JWY`};
     copy(map[d.copy]||""); return;
   }
   switch(d.act){
@@ -971,9 +967,6 @@ document.addEventListener("click",e=>{
       S.compose.duration=SHORT_DURS.includes(S.lyrics.length)?S.lyrics.length:"제한 없음";
       if(!S.compose.lang.length) S.compose.lang=[S.lyrics.eng.startsWith("전체 영어")?"english lyrics":S.lyrics.eng.startsWith("영어 없이")?"korean lyrics":"korean and english lyrics"];
       S.mode="compose"; S.step=0; save(); render(); toast("가사 정보를 가지고 작곡으로 이동했어요"); break;
-    case "dlLyrics": download(`${S.lyrics.title||"나의 가사"}.txt`, `${S.lyrics.title||"제목 미정"}\n\n${S.lyrics.final}\n\n---\n[원문]\n${[rawWriting().qa,rawWriting().free].filter(Boolean).join("\n\n")}\n\nBy Mindstream LAB Awesome JWY`); break;
-    case "dlCompose": download(`${S.compose.title||S.lyrics.title||"나의 곡"}_프롬프트.txt`, `[제목]\n${S.compose.title||S.lyrics.title||""}\n\n[Styles]\n${composePrompt()}\n\n[한국어 풀이]\n${composeExplain().map(([k,v])=>`${k}: ${v}`).join("\n")}\n\n[Exclude Styles]\n${S.compose.exclude}\n\n[Lyrics]\n${S.lyrics.final.trim()||composeTagsSkeleton()}\n\nBy Mindstream LAB Awesome JWY`); break;
-    case "print": window.print(); break;
   }
 });
 
@@ -981,6 +974,7 @@ document.addEventListener("input",e=>{
   const t=e.target;
   if(t.dataset.model){ setPath(t.dataset.model,t.value);
     if(t.id==="finalLyrics"){ const lc=$("#lineCount"); if(lc) lc.innerHTML=lineCountHTML(t.value); const ls=$("#lenStatus"); if(ls) ls.innerHTML=lenStatusHTML(); }
+    if(t.dataset.model==="lyrics.title"){ const h=$("#lyTitle"); if(h) h.textContent=t.value||"제목 미정"; }
     if(t.dataset.model.startsWith("compose")) updLive();
   }
   if(t.dataset.ans!==undefined){ S.lyrics.answers[t.dataset.ans]=t.value; save(); }
