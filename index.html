@@ -593,7 +593,7 @@ ${L.final.trim()||"(여기에 줄이고 싶은 가사를 붙여넣으세요)"}`;
 function autoSkeleton(){
   const L=S.lyrics; const {free}=rawWriting();
   const all=[...Object.values(L.answers).filter(Boolean), free].join("\n");
-  let sents=all.split(/\n+|(?<=[.!?。…~])\s*|,\s*/).map(s=>s.trim().replace(/[.。]$/,"")).filter(s=>s.length>1);
+  let sents=all.replace(/([.!?。…~])\s*/g,"$1\n").split(/\n+|,\s*/).map(s=>s.trim().replace(/[.。]$/,"")).filter(s=>s.length>1);
   // 긴 문장은 쉼표·조사 기준 반으로
   sents=sents.flatMap(s=>{ if(s.length<=22) return [s]; const mid=s.indexOf(" ",Math.floor(s.length/2)); return mid>0?[s.slice(0,mid),s.slice(mid+1)]:[s]; });
   if(!sents.length) return "(먼저 3단계에서 글을 써 주세요)";
