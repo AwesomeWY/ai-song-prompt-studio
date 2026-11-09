@@ -748,8 +748,7 @@ function composeView(step){
     <div class="catnav">${Object.keys(GENRES).map((g,i)=>`<button data-jump="cat${i}" class="${GENRES[g].some(isShown)?"":"more"}">${g.split(" ")[0]}</button>`).join("")}<button data-act="randomGenre">🎲 랜덤 추천</button></div>
     <div id="gList">${Object.entries(GENRES).map(([cat,list],i)=>`<div class="group ${list.some(isShown)?"":"more"}" id="cat${i}"><h3>${cat} <span class="cnt">${c.showAll?list.length+"개":`추천 ${list.filter(isShown).length}개 / 전체 ${list.length}개`}</span></h3><div class="chips" data-max="3">${list.map(x=>{ const h=chip("compose.genres",x); return isShown(x)?h:h.replace(/^<(span|button) class="/,'<$1 class="more '); }).join("")}</div></div>`).join("")}</div>
     </div>
-    <div class="more-toggle"><button class="btn" data-act="toggleGenres">${c.showAll?`－ 추천 장르만 보기 (${CORE_GENRES.size}개)`:`＋ 전체 장르 보기 (${Object.values(GENRES).flat().length}개)`}</button></div>
-    <div class="tip"><b>수업 팁</b> · 장르 이름은 영어로 프롬프트에 들어갑니다. 칩 옆의 작은 영어가 실제로 AI에게 전달되는 단어예요.</div>`;
+    <div class="more-toggle"><button class="btn" data-act="toggleGenres">${c.showAll?`－ 추천 장르만 보기 (${CORE_GENRES.size}개)`:`＋ 전체 장르 보기 (${Object.values(GENRES).flat().length}개)`}</button></div>`;
   case 1: return `
     <h2>🎨 어떤 분위기의 곡인가요?</h2>
     <p class="desc">곡의 감정을 2~4개 고르면 가장 좋아요. 반대 감정을 섞으면(예: 슬픈 + 희망찬) 깊이 있는 곡이 됩니다.</p>
