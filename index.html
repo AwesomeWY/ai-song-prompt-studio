@@ -869,7 +869,8 @@ function lyricView(step){
   case 3: return `
     <h2>🎚️ 어떤 노래로 만들까요?</h2>
     <p class="desc">글을 가사로 바꿀 때 적용할 방향을 정해요.</p>
-    <div class="group"><h3>노래 장르 <span class="cnt">최대 2개${sampleCount(SONG_GENRES)?" · ▶ 누르면 샘플 듣기":""}</span></h3><div class="chips" data-max="2">${SONG_GENRES.map(x=>chip("lyrics.genre",x,false)).join("")}</div></div>
+    <div class="group"><h3>노래 장르 <span class="cnt">최대 2개${sampleCount(SONG_GENRES)?" · ▶ 누르면 샘플 듣기":""}</span></h3><div class="chips" data-max="2">${SONG_GENRES.map(x=>chip("lyrics.genre",x,false)).join("")}</div>
+      <p style="color:var(--muted);font-size:14px;margin-top:8px">고른 장르는 가사 분위기와 말투에 반영돼요. 완성 화면에서 'AI 작곡 하러 가기'를 누르면 작곡 1단계에도 자동으로 채워집니다.</p></div>
     <div class="group"><h3>화자 시점</h3>${radioChips("lyrics.pov",POVS)}</div>
     <div class="group"><h3>말투</h3>${radioChips("lyrics.tone",TONES)}</div>
     <div class="group"><h3>감정 흐름</h3>${radioChips("lyrics.flow",FLOWS)}</div>
